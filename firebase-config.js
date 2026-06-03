@@ -1,4 +1,4 @@
-window.BSK_FIREBASE_CONFIG = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAReToMdKkWDRY4_BKwKEgXcMFu1S6y1O0",
   authDomain: "saxonua-bsk-wheel.firebaseapp.com",
   databaseURL: "https://saxonua-bsk-wheel-default-rtdb.europe-west1.firebasedatabase.app",
