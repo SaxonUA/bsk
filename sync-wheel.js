@@ -5,7 +5,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 
 const SHEET_ID = '17phnEn-NW-OnrZg4DcW65r-Xoq6ScsdVjS5yL0SS3fk';
 const INPUT_SHEET_GID = '703438953'; // аркуш 33
-const WRITER_URL_KEY = 'wot_platoon_cup_writer_url_v1';
+const WRITER_URL = 'https://script.google.com/macros/s/AKfycby3U55n5334RbGZyrXp1vHN-rMkqOE7A8txmPh8N8vt26Fb6tAqya6Gb2BTCokgwIpM2w/exec';
 const ROOM_ID = sanitizeRoom(new URLSearchParams(location.search).get('room') || 'main');
 const IS_CONTROL = new URLSearchParams(location.search).get('view') === 'control' || /control\.html$/i.test(location.pathname);
 const columns = { ROUND_1: 3, ROUND_2: 4, ROUND_3: 5, FINAL: 6 };
@@ -156,7 +156,7 @@ function savePendingWrites() {
 }
 
 function getWriterUrl() {
-  return String(localStorage.getItem(WRITER_URL_KEY) || '').trim();
+  return WRITER_URL;
 }
 
 function escapeHtml(s) {
@@ -280,7 +280,7 @@ function renderPlatoonsBoard() {
 }
 
 function render() {
-  $('activeList').textContent = state.source === 'FINAL' ? 'ФІНАЛ' : roundTitle(state.source);
+  $('activeList').textContent = state.source;
   $('sourceRound1').classList.toggle('active', state.source === 'ROUND_1');
   $('sourceRound2').classList.toggle('active', state.source === 'ROUND_2');
   $('sourceRound3').classList.toggle('active', state.source === 'ROUND_3');
@@ -292,7 +292,7 @@ function render() {
   $('pickedCount').textContent = state.selected.length;
   $('platoonMode').classList.toggle('active', state.mode === 'PLATOON');
   $('finalMode').classList.toggle('active', state.mode === 'FINAL');
-  $('pickedTitle').textContent = state.mode === 'FINAL' ? 'Останній вибутий гравець' : `Поточний взвод • ${roundTitle(state.source)}`;
+  $('pickedTitle').textContent = state.mode === 'FINAL' ? 'Останній вибутий гравець' : 'Поточний взвод';
   $('pickedSlots').innerHTML = '';
   $('winnerBox').style.display = 'none';
   if (state.mode === 'PLATOON') {
@@ -323,7 +323,6 @@ function render() {
   $('undoBtn').disabled = noControl || spinning || !state.selected.length;
   $('reloadBtn').disabled = noControl || spinning;
   $('resetBtn').disabled = noControl || spinning;
-  $('writerBtn').disabled = !IS_CONTROL;
   drawWheel();
   renderWriterStatus();
 }
@@ -435,15 +434,7 @@ async function switchSource(source) {
   if (!IS_CONTROL || spinning || columns[source] === undefined) return;
   const all = [...(sheetLists[source] || [])];
   const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-  state = {
-    ...freshState(),
-    source,
-    mode,
-    all,
-    remaining: [...all],
-    log: [...(state.log || [])],
-    platoonsByRound: normalizePlatoonsByRound(state.platoonsByRound, state),
-  };
+  state = { ...freshState(), source, mode, all, remaining: [...all] };
   rotation = 0;
   await broadcastState();
   setStatus(all.length ? `${source}: завантажено ${all.length} гравців` : `${source}: список поки порожній`, all.length ? 'ok' : '');
@@ -503,25 +494,6 @@ async function flushPendingWrites() {
   } finally {
     flushing = false;
   }
-}
-
-function configureWriter() {
-  const current = getWriterUrl();
-  const answer = prompt('Встав URL вебзастосунку Google Apps Script, який закінчується на /exec:', current);
-  if (answer === null) return;
-  const url = answer.trim();
-  if (!url) {
-    localStorage.removeItem(WRITER_URL_KEY);
-    renderWriterStatus();
-    return;
-  }
-  if (!/^https:\/\/script\.google\.com\//i.test(url)) {
-    alert('Встав URL Google Apps Script, який починається з https://script.google.com/ і закінчується на /exec');
-    return;
-  }
-  localStorage.setItem(WRITER_URL_KEY, url);
-  renderWriterStatus('URL запису збережено. Перевіряю чергу…');
-  flushPendingWrites();
 }
 
 function renderWriterStatus(message = '', isError = false) {
@@ -709,7 +681,6 @@ function bindButtons() {
   $('nextPlatoonBtn').onclick = () => nextPlatoon().catch(error => setStatus(error.message, 'error'));
   $('undoBtn').onclick = () => undo().catch(error => setStatus(error.message, 'error'));
   $('reloadBtn').onclick = () => loadFromSheet(true);
-  $('writerBtn').onclick = configureWriter;
   $('resetBtn').onclick = () => resetState().catch(error => setStatus(error.message, 'error'));
   $('platoonMode').onclick = () => setMode('PLATOON').catch(error => setStatus(error.message, 'error'));
   $('finalMode').onclick = () => setMode('FINAL').catch(error => setStatus(error.message, 'error'));

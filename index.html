@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WoT Platoon Cup Wheel v10</title>
+  <title>WoT Platoon Cup Wheel v11</title>
   <style>
     :root {
       --bg:#071018; --panel:#101d29; --panel2:#152737; --orange:#ff8a00; --cyan:#40e0d0;
@@ -42,7 +42,6 @@
       <button class="btn green" id="nextPlatoonBtn">👥 НОВИЙ ВЗВОД</button>
       <button class="btn" id="undoBtn">↩️ ПОВЕРНУТИ ОСТАННЬОГО</button>
       <button class="btn" id="reloadBtn">🔄 ЗАВАНТАЖИТИ З ТАБЛИЦІ</button>
-      <button class="btn" id="writerBtn">⚙️ НАЛАШТУВАТИ ЗАПИС</button>
       <button class="btn red" id="resetBtn">🗑️ СКИНУТИ СТАН КОЛЕСА</button>
     </div>
   </div>
@@ -78,7 +77,7 @@
       <h3>Історія вибору</h3>
       <div class="log" id="log"><div class="muted">Ще немає вибраних гравців</div></div>
     </div>
-    <div class="card section">
+    <div class="card section control-only">
       <h3>Синхронізація</h3>
       <div class="sync-grid">
         <div class="muted" id="syncStatus">Підключення до Firebase…</div>
@@ -91,10 +90,10 @@
         </div>
       </div>
     </div>
-    <div class="card section"><div class="muted" id="status">Підключення до Google Sheets…</div></div>
+    <div class="card section control-only"><div class="muted" id="status">Підключення до Google Sheets…</div></div>
     <div class="card section technical-status" id="writeStatusCard"><div class="muted" id="writeStatus"></div></div>
   </div>
 </div>
-<script type="module" src="./sync-wheel.js?v=10"></script>
+<script type="module" src="./sync-wheel.js?v=11"></script>
 </body>
 </html>
