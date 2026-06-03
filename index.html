@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WoT Platoon Cup Wheel v9</title>
+  <style>
+    :root {
+      --bg:#071018; --panel:#101d29; --panel2:#152737; --orange:#ff8a00; --cyan:#40e0d0;
+      --green:#70e000; --red:#ff4d4d; --text:#f5f8fb; --muted:#a9b7c6; --line:rgba(255,138,0,.55);
+    }
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:transparent;color:var(--text);font-family:Arial,Helvetica,sans-serif}
+    body{padding:20px;background:radial-gradient(circle at top,rgba(255,138,0,.08),transparent 35%),rgba(4,9,14,.94)}
+    .app{max-width:1320px;margin:auto;display:grid;grid-template-columns:minmax(580px,1fr) 390px;gap:20px}
+    .card{background:linear-gradient(150deg,rgba(21,39,55,.97),rgba(8,16,24,.97));border:1px solid var(--line);border-radius:24px;box-shadow:0 0 26px rgba(255,138,0,.18);padding:18px}
+    .header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:10px}
+    .eyebrow{font-size:12px;letter-spacing:2px;color:var(--muted);font-weight:900}.title{font-size:28px;font-weight:1000;margin-top:4px}.subtitle{font-size:14px;color:var(--muted);font-weight:700;margin-top:6px}
+    .badge{border:1px solid rgba(255,138,0,.5);background:rgba(255,138,0,.1);border-radius:16px;padding:10px 12px;text-align:center;min-width:145px}.badge small{display:block;color:var(--muted);font-size:11px;font-weight:900;letter-spacing:1px}.badge strong{display:block;color:var(--orange);font-size:22px;margin-top:3px}
+    .wheel-wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:650px}.pointer{position:absolute;right:calc(50% - 337px);top:50%;transform:translateY(-50%);width:0;height:0;border-top:18px solid transparent;border-bottom:18px solid transparent;border-right:36px solid #fff;filter:drop-shadow(0 0 10px rgba(255,255,255,.75));z-index:3}
+    canvas{width:650px;height:650px;max-width:100%;max-height:72vh;filter:drop-shadow(0 0 24px rgba(255,138,0,.28))}
+    .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.btn{appearance:none;border:none;border-radius:14px;padding:13px 12px;font-size:14px;font-weight:900;cursor:pointer;background:#24384a;color:#fff;border:1px solid rgba(255,255,255,.12);transition:.2s}.btn:hover{transform:translateY(-1px);filter:brightness(1.12)}.btn.primary{grid-column:1/-1;background:linear-gradient(135deg,#ff8a00,#d96300);font-size:19px;padding:16px}.btn.green{background:rgba(112,224,0,.18);border-color:rgba(112,224,0,.5)}.btn.red{background:rgba(255,77,77,.18);border-color:rgba(255,77,77,.5)}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    .side{display:flex;flex-direction:column;gap:14px}.section{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:17px;padding:13px}.section h3{font-size:13px;letter-spacing:1px;color:var(--muted);margin:0 0 10px;text-transform:uppercase}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:rgba(255,255,255,.045);border-radius:13px;padding:10px;text-align:center}.metric span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}.metric strong{display:block;margin-top:3px;font-size:26px;color:var(--cyan)}
+    .picked{display:flex;flex-direction:column;gap:8px}.slot{min-height:48px;padding:12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.18);font-weight:900;font-size:18px;color:var(--muted)}.slot.filled{color:#fff;border-style:solid;border-color:rgba(64,224,208,.45);background:rgba(64,224,208,.08)}
+    .winner{display:none;padding:14px;border-radius:14px;text-align:center;background:rgba(112,224,0,.10);border:1px solid rgba(112,224,0,.5)}.winner small{color:var(--muted);font-weight:900;letter-spacing:1px}.winner strong{display:block;margin-top:6px;color:var(--green);font-size:28px;word-break:break-word}
+    .log{max-height:215px;overflow:auto;display:flex;flex-direction:column;gap:6px}.log-row{padding:8px 9px;background:rgba(255,255,255,.045);border-radius:10px;font-size:13px;font-weight:800}.muted{color:var(--muted)}.error{color:#ff9b9b}.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode{padding:10px 8px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#dce6ef;font-weight:900;cursor:pointer}.mode.active{border-color:rgba(255,138,0,.7);background:rgba(255,138,0,.12);color:var(--orange)}.source-switch{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.source-btn{padding:9px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#dce6ef;font-size:12px;font-weight:900;cursor:pointer}.source-btn.active{border-color:rgba(64,224,208,.65);background:rgba(64,224,208,.11);color:var(--cyan)}.technical-status{display:none}.technical-status.show{display:block}
+    @media(max-width:1050px){.app{grid-template-columns:1fr}.wheel-wrap{min-height:560px}.pointer{right:calc(50% - 290px)}canvas{width:560px;height:560px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="card">
+    <div class="header">
+      <div><div class="eyebrow">WORLD OF TANKS • КОЛЕСО ФОРТУНИ</div><div class="title">БИТВА ВЗВОДІВ</div><div class="subtitle" id="subtitle">Завантаження списку гравців…</div></div>
+      <div class="badge"><small>АКТИВНИЙ СПИСОК</small><strong id="activeList">ROUND_1</strong></div>
+    </div>
+    <div class="wheel-wrap"><canvas id="wheel" width="900" height="900"></canvas><div class="pointer"></div></div>
+    <div class="controls">
+      <button class="btn primary" id="spinBtn">🎯 КРУТИТИ КОЛЕСО</button>
+      <button class="btn green" id="nextPlatoonBtn">👥 НОВИЙ ВЗВОД</button>
+      <button class="btn" id="undoBtn">↩️ ПОВЕРНУТИ ОСТАННЬОГО</button>
+      <button class="btn" id="reloadBtn">🔄 ЗАВАНТАЖИТИ З ТАБЛИЦІ</button>
+      <button class="btn" id="writerBtn">⚙️ НАЛАШТУВАТИ ЗАПИС</button>
+      <button class="btn red" id="resetBtn">🗑️ СКИНУТИ ЛОКАЛЬНИЙ СТАН</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card section">
+      <h3>Список гравців</h3>
+      <div class="source-switch">
+        <button class="source-btn active" id="sourceRound1">ТУР 1</button>
+        <button class="source-btn" id="sourceRound2">ТУР 2</button>
+        <button class="source-btn" id="sourceRound3">ТУР 3</button>
+        <button class="source-btn" id="sourceFinal">ФІНАЛ</button>
+      </div>
+    </div>
+    <div class="card section">
+      <h3>Режим колеса</h3>
+      <div class="mode-switch"><button class="mode active" id="platoonMode">ВЗВОДИ ПО 3</button><button class="mode" id="finalMode">ФІНАЛ НА ВИБУВАННЯ</button></div>
+    </div>
+    <div class="card section">
+      <h3>Стан</h3>
+      <div class="metric-grid"><div class="metric"><span>Залишилося</span><strong id="remainingCount">0</strong></div><div class="metric"><span>Обрано</span><strong id="pickedCount">0</strong></div></div>
+    </div>
+    <div class="card section">
+      <h3 id="pickedTitle">Поточний взвод</h3>
+      <div class="picked" id="pickedSlots"></div>
+      <div class="winner" id="winnerBox"><small>ПЕРЕМОЖЕЦЬ</small><strong id="winnerName"></strong></div>
+    </div>
+    <div class="card section">
+      <h3>Історія вибору</h3>
+      <div class="log" id="log"><div class="muted">Ще немає вибраних гравців</div></div>
+    </div>
+    <div class="card section"><div class="muted" id="status">Підключення до Google Sheets…</div></div>
+    <div class="card section technical-status" id="writeStatusCard"><div class="muted" id="writeStatus"></div></div>
+  </div>
+</div>
+<script>
+(() => {
+  const SHEET_ID = '17phnEn-NW-OnrZg4DcW65r-Xoq6ScsdVjS5yL0SS3fk';
+  const INPUT_SHEET_GID = '703438953'; // аркуш 33
+  const STORAGE_KEY = 'wot_platoon_cup_state_v2';
+  const WRITER_URL_KEY = 'wot_platoon_cup_writer_url_v1';
+  const columns = { ROUND_1: 3, ROUND_2: 4, ROUND_3: 5, FINAL: 6 };
+  const $ = id => document.getElementById(id);
+  const canvas = $('wheel');
+  const ctx = canvas.getContext('2d');
+  const TAU = Math.PI * 2;
+  let rotation = 0;
+  let spinning = false;
+  let flushing = false;
+  let state = freshState();
+  let sheetLists = { ROUND_1: [], ROUND_2: [], ROUND_3: [], FINAL: [] };
+  let sheetDefaultSource = 'ROUND_1';
+
+  function freshState() {
+    return {
+      source: 'ROUND_1', mode: 'PLATOON', all: [], remaining: [], selected: [], log: [],
+      pendingWrites: [], finalWinnerQueued: ''
+    };
+  }
+
+  function loadGoogleSheetJsonp() {
+    return new Promise((resolve, reject) => {
+      const callbackName = `__wotPlatoonCup_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement('script');
+      let finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        script.remove();
+        try { delete window[callbackName]; } catch { window[callbackName] = undefined; }
+      };
+      window[callbackName] = data => { cleanup(); resolve(data); };
+      script.onerror = () => { cleanup(); reject(new Error('Google Sheets недоступний. Перевір доступ: «Усі, хто має посилання» → «Читач»')); };
+      const timer = setTimeout(() => { cleanup(); reject(new Error('Google Sheets не відповів')); }, 12000);
+      const tqx = `out:json;responseHandler:${callbackName}`;
+      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}&gid=${encodeURIComponent(INPUT_SHEET_GID)}&range=${encodeURIComponent('A1:G250')}&headers=1&_=${Date.now()}`;
+      document.head.appendChild(script);
+    });
+  }
+
+  function callWriter(job) {
+    return new Promise((resolve, reject) => {
+      const url = getWriterUrl();
+      if (!url) return reject(new Error('Не налаштовано URL Google Apps Script'));
+      const callbackName = `__wotWriter_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement('script');
+      let finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        script.remove();
+        try { delete window[callbackName]; } catch { window[callbackName] = undefined; }
+      };
+      window[callbackName] = data => {
+        cleanup();
+        if (data && data.ok) resolve(data);
+        else reject(new Error(data?.error || 'Google Apps Script повернув помилку'));
+      };
+      script.onerror = () => { cleanup(); reject(new Error('Не вдалося звернутися до Google Apps Script')); };
+      const timer = setTimeout(() => { cleanup(); reject(new Error('Google Apps Script не відповів')); }, 15000);
+      const params = new URLSearchParams({
+        callback: callbackName,
+        action: job.action,
+        request_id: job.id,
+        ...job.payload,
+        _: String(Date.now())
+      });
+      script.src = `${url}${url.includes('?') ? '&' : '?'}${params.toString()}`;
+      document.head.appendChild(script);
+    });
+  }
+
+  function getWriterUrl() { return String(localStorage.getItem(WRITER_URL_KEY) || '').trim(); }
+  function makeId() { return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`; }
+  function cellValue(cell) { return cell ? (cell.v ?? cell.f ?? '') : ''; }
+  function rowsToGrid(data) { return (data.table.rows || []).map(row => (row.c || []).map(cellValue)); }
+  function setting(grid, name, fallback = '') { for (const row of grid) if (String(row[0] ?? '').trim().toUpperCase() === name.toUpperCase()) return row[1] ?? fallback; return fallback; }
+  function uniqueNames(grid, col) { const seen = new Set(), names = []; for (let r = 0; r < grid.length; r++) { const name = String(grid[r]?.[col] ?? '').trim(); const key = name.toLowerCase(); if (name && !seen.has(key)) { seen.add(key); names.push(name); } } return names; }
+  function loadStored() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; } }
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function samePlayers(a, b) { return JSON.stringify([...a].sort((x, y) => x.localeCompare(y))) === JSON.stringify([...b].sort((x, y) => x.localeCompare(y))); }
+  function ensureStateShape(value) {
+    const base = freshState();
+    const safe = value && typeof value === 'object' ? value : {};
+    return {
+      ...base,
+      ...safe,
+      all: Array.isArray(safe.all) ? safe.all : [],
+      remaining: Array.isArray(safe.remaining) ? safe.remaining : [],
+      selected: Array.isArray(safe.selected) ? safe.selected : [],
+      log: Array.isArray(safe.log) ? safe.log : [],
+      pendingWrites: Array.isArray(safe.pendingWrites) ? safe.pendingWrites : [],
+    };
+  }
+
+  async function loadFromSheet(force = false) {
+    $('status').textContent = 'Завантаження даних з Google Sheets…';
+    try {
+      const grid = rowsToGrid(await loadGoogleSheetJsonp());
+      const requestedSource = String(setting(grid, 'ACTIVE_LIST', 'ROUND_1')).trim().toUpperCase();
+      sheetDefaultSource = columns[requestedSource] !== undefined ? requestedSource : 'ROUND_1';
+      sheetLists = {
+        ROUND_1: uniqueNames(grid, columns.ROUND_1),
+        ROUND_2: uniqueNames(grid, columns.ROUND_2),
+        ROUND_3: uniqueNames(grid, columns.ROUND_3),
+        FINAL: uniqueNames(grid, columns.FINAL),
+      };
+      const stored = ensureStateShape(loadStored());
+      const source = sheetDefaultSource;
+      const all = [...sheetLists[source]];
+      const defaultMode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
+      const keepProgress = !force && stored.source === source && samePlayers(stored.all, all);
+      state = keepProgress ? { ...stored, source, all, mode: stored.mode || defaultMode } : {
+        ...freshState(), source, mode: defaultMode, all, remaining: [...all], pendingWrites: stored.pendingWrites
+      };
+      if (source === 'FINAL') state.mode = 'FINAL';
+      save(); render(); flushPendingWrites();
+      $('status').textContent = `Завантажено ${all.length} гравців • ${new Date().toLocaleTimeString('uk-UA')}`;
+    } catch (err) {
+      $('status').innerHTML = `<span class="error">Помилка: ${escapeHtml(err.message)}</span>`;
+      render();
+    }
+  }
+
+  function switchSource(source) {
+    if (spinning || columns[source] === undefined) return;
+    const all = [...(sheetLists[source] || [])];
+    const stored = ensureStateShape(loadStored());
+    const pendingWrites = stored.pendingWrites;
+    const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
+    state = { ...freshState(), source, mode, all, remaining: [...all], pendingWrites };
+    rotation = 0;
+    save(); render(); flushPendingWrites();
+    $('status').textContent = all.length
+      ? `${source}: завантажено ${all.length} гравців`
+      : `${source}: список поки порожній`;
+  }
+
+  function enqueueWrite(action, payload, label) {
+    state.pendingWrites.push({ id: makeId(), action, payload, label });
+    save(); renderWriterStatus(); flushPendingWrites();
+  }
+
+  async function flushPendingWrites() {
+    if (flushing || !state.pendingWrites.length) { renderWriterStatus(); return; }
+    if (!getWriterUrl()) { renderWriterStatus(); return; }
+    flushing = true;
+    renderWriterStatus('Синхронізація…');
+    try {
+      while (state.pendingWrites.length) {
+        const job = state.pendingWrites[0];
+        await callWriter(job);
+        state.pendingWrites.shift();
+        save();
+      }
+      render();
+      renderWriterStatus('');
+    } catch (error) {
+      render();
+      renderWriterStatus(`⚠️ Синхронізацію не виконано: ${error.message}`, true);
+    } finally {
+      flushing = false;
+    }
+  }
+
+  function configureWriter() {
+    const current = getWriterUrl();
+    const answer = prompt('Встав URL вебзастосунку Google Apps Script, який закінчується на /exec:', current);
+    if (answer === null) return;
+    const url = answer.trim();
+    if (!url) {
+      localStorage.removeItem(WRITER_URL_KEY);
+      renderWriterStatus();
+      return;
+    }
+    if (!/^https:\/\/script\.google\.com\//i.test(url)) {
+      alert('Встав URL Google Apps Script, який починається з https://script.google.com/ і закінчується на /exec');
+      return;
+    }
+    localStorage.setItem(WRITER_URL_KEY, url);
+    renderWriterStatus('URL запису збережено. Перевіряю локальну чергу…');
+    flushPendingWrites();
+  }
+
+  function renderWriterStatus(message = '', isError = false) {
+    const box = $('writeStatus');
+    const card = $('writeStatusCard');
+    if (!box || !card) return;
+    const pending = state.pendingWrites.length;
+    if (isError) {
+      card.classList.add('show');
+      box.className = 'error';
+      box.textContent = message || '⚠️ Перевір налаштування синхронізації';
+      return;
+    }
+    if (!getWriterUrl() && pending) {
+      card.classList.add('show');
+      box.className = 'error';
+      box.textContent = `⚠️ Налаштуй синхронізацію • очікує відправлення: ${pending}`;
+      return;
+    }
+    card.classList.remove('show');
+    box.textContent = '';
+  }
+
+  function palette(i) { const colors = ['#ff8a00','#40e0d0','#5d8cff','#70e000','#d36cff','#ff5d73','#ffd166','#00b4d8']; return colors[i % colors.length]; }
+  function drawWheel() {
+    const items = state.remaining; const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2, r = 390;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
+    if (!items.length) { ctx.beginPath(); ctx.arc(0,0,r,0,TAU); ctx.fillStyle='#152737'; ctx.fill(); ctx.strokeStyle='rgba(255,138,0,.7)'; ctx.lineWidth=8; ctx.stroke(); ctx.fillStyle='#fff'; ctx.font='900 38px Arial'; ctx.textAlign='center'; ctx.fillText('СПИСОК ПОРОЖНІЙ',0,10); ctx.restore(); return; }
+    const slice = TAU / items.length;
+    items.forEach((name, i) => {
+      const a0 = i * slice, a1 = a0 + slice;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,a0,a1); ctx.closePath(); ctx.fillStyle=palette(i); ctx.fill(); ctx.strokeStyle='rgba(255,255,255,.34)'; ctx.lineWidth=2; ctx.stroke();
+      ctx.save(); ctx.rotate(a0 + slice / 2); ctx.translate(r * .24, 0); ctx.fillStyle='#071018'; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.font = `900 ${items.length > 28 ? 16 : items.length > 18 ? 20 : items.length > 10 ? 24 : 30}px Arial`;
+      const maxLength = items.length > 28 ? 20 : items.length > 18 ? 18 : items.length > 10 ? 16 : 14;
+      const short = name.length > maxLength ? name.slice(0, maxLength - 1) + '…' : name;
+      ctx.fillText(short, 0, 0); ctx.restore();
+    });
+    ctx.beginPath(); ctx.arc(0,0,76,0,TAU); ctx.fillStyle='#071018'; ctx.fill(); ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=6; ctx.stroke(); ctx.fillStyle='#ff8a00'; ctx.font='1000 29px Arial'; ctx.textAlign='center'; ctx.fillText('WoT',0,10); ctx.restore();
+  }
+
+  function render() {
+    $('activeList').textContent = state.source;
+    $('sourceRound1').classList.toggle('active', state.source === 'ROUND_1');
+    $('sourceRound2').classList.toggle('active', state.source === 'ROUND_2');
+    $('sourceRound3').classList.toggle('active', state.source === 'ROUND_3');
+    $('sourceFinal').classList.toggle('active', state.source === 'FINAL');
+    $('subtitle').textContent = state.mode === 'FINAL' ? 'Фінальне колесо: викреслюємо гравців, доки не залишиться один' : 'Формуємо нові взводи по три гравці';
+    $('remainingCount').textContent = state.remaining.length; $('pickedCount').textContent = state.selected.length;
+    $('platoonMode').classList.toggle('active', state.mode === 'PLATOON'); $('finalMode').classList.toggle('active', state.mode === 'FINAL');
+    $('pickedTitle').textContent = state.mode === 'FINAL' ? 'Останній вибутий гравець' : 'Поточний взвод';
+    $('pickedSlots').innerHTML = ''; $('winnerBox').style.display = 'none';
+    if (state.mode === 'PLATOON') {
+      for (let i = 0; i < 3; i++) { const d = document.createElement('div'); d.className = 'slot' + (state.selected[i] ? ' filled' : ''); d.textContent = state.selected[i] || `${i + 1}. очікує вибору`; $('pickedSlots').appendChild(d); }
+    } else {
+      const d = document.createElement('div'); d.className = 'slot' + (state.selected.length ? ' filled' : ''); d.textContent = state.selected.at(-1) || 'Ще нікого не викреслено'; $('pickedSlots').appendChild(d);
+      if (state.remaining.length === 1) { $('winnerName').textContent = state.remaining[0]; $('winnerBox').style.display = 'block'; }
+    }
+    const publicLog = state.log.filter(x => !String(x).startsWith('📝 Записано') && !String(x).includes('аркуш 44'));
+    $('log').innerHTML = publicLog.length ? publicLog.slice().reverse().map(x => `<div class="log-row">${escapeHtml(x)}</div>`).join('') : '<div class="muted">Ще немає вибраних гравців</div>';
+    $('spinBtn').disabled = spinning || !state.remaining.length || (state.mode === 'PLATOON' && state.selected.length >= 3) || (state.mode === 'FINAL' && state.remaining.length <= 1);
+    $('nextPlatoonBtn').disabled = state.mode !== 'PLATOON' || spinning || state.selected.length !== 3;
+    $('undoBtn').disabled = spinning || !state.selected.length;
+    drawWheel(); renderWriterStatus();
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
+
+  function random01() {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const value = new Uint32Array(1);
+      window.crypto.getRandomValues(value);
+      return value[0] / 4294967296;
+    }
+    return Math.random();
+  }
+
+  function randomInt(maxExclusive) {
+    return Math.floor(random01() * maxExclusive);
+  }
+
+  function spin() {
+    if (spinning || !state.remaining.length) return;
+    if (state.mode === 'PLATOON' && state.selected.length >= 3) return;
+    if (state.mode === 'FINAL' && state.remaining.length <= 1) return;
+
+    spinning = true;
+    render();
+
+    const count = state.remaining.length;
+    const target = randomInt(count);
+    const slice = TAU / count;
+
+    // Випадково обираємо не лише гравця, а й точку зупинки всередині його сектора.
+    // Завдяки цьому колесо не завершує кожне обертання в однаковій позиції.
+    const innerOffset = (random01() - 0.5) * slice * 0.58;
+    const desired = -(target * slice + slice / 2 + innerOffset);
+    const currentNorm = ((rotation % TAU) + TAU) % TAU;
+    let delta = ((desired - currentNorm) % TAU + TAU) % TAU;
+
+    const fullTurns = 7 + randomInt(7); // від 7 до 13 повних обертів
+    delta += TAU * fullTurns;
+
+    const start = performance.now();
+    const from = rotation;
+    const duration = 4300 + randomInt(2101); // від 4,3 до 6,4 секунди
+
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 4);
+      rotation = from + delta * eased;
+      drawWheel();
+      if (t < 1) requestAnimationFrame(frame);
+      else finishSpin(target);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function finishSpin(index) {
+    const name = state.remaining[index]; state.remaining.splice(index, 1); state.selected.push(name);
+    if (state.mode === 'PLATOON') {
+      state.log.push(`✅ До взводу додано: ${name}`);
+    } else {
+      state.log.push(`❌ Вибуває: ${name}`);
+      enqueueWrite('save_final_event', { player: name, event: 'ВИБУВ' }, `ФІНАЛ • вибув: ${name}`);
+      if (state.remaining.length === 1 && state.finalWinnerQueued !== state.remaining[0]) {
+        state.finalWinnerQueued = state.remaining[0];
+        enqueueWrite('save_final_event', { player: state.remaining[0], event: 'ПЕРЕМОЖЕЦЬ' }, `ФІНАЛ • переможець: ${state.remaining[0]}`);
+      }
+    }
+    spinning = false; save(); render();
+  }
+
+  function nextPlatoon() {
+    if (state.mode !== 'PLATOON' || spinning || state.selected.length !== 3) return;
+    const players = [...state.selected];
+    state.log.push(`👥 Взвод сформовано: ${players.join(' • ')}`);
+    enqueueWrite('save_platoon', { round: state.source, p1: players[0], p2: players[1], p3: players[2] }, `${state.source} • ${players.join(' • ')}`);
+    state.selected = []; save(); render();
+  }
+
+  function undo() {
+    if (spinning || !state.selected.length) return;
+    const name = state.selected.pop(); state.remaining.push(name);
+    state.log.push(`↩️ Повернуто у колесо: ${name}`);
+    if (state.mode === 'FINAL') {
+      state.finalWinnerQueued = '';
+      enqueueWrite('save_final_event', { player: name, event: 'ПОВЕРНУТО У КОЛЕСО' }, `ФІНАЛ • повернуто: ${name}`);
+    }
+    save(); render();
+  }
+
+  function setMode(mode) {
+    if (spinning) return;
+    if (mode === 'FINAL' && state.source !== 'FINAL') {
+      switchSource('FINAL');
+      return;
+    }
+    if (mode === 'PLATOON' && state.source === 'FINAL') {
+      switchSource(sheetDefaultSource === 'FINAL' ? 'ROUND_1' : sheetDefaultSource);
+      return;
+    }
+    state.mode = mode; state.selected = []; state.finalWinnerQueued = '';
+    state.log.push(mode === 'FINAL' ? '🏆 Увімкнено фінальне викреслювання' : '👥 Увімкнено формування взводів');
+    save(); render();
+  }
+
+  function reset() {
+    if (spinning) return;
+    const pendingWrites = state.pendingWrites;
+    state = { ...freshState(), source: state.source, mode: state.mode, all: [...state.all], remaining: [...state.all], pendingWrites };
+    save(); render(); $('status').textContent = 'Локальний стан очищено. Усі гравці знову доступні.'; flushPendingWrites();
+  }
+
+  $('spinBtn').onclick = spin;
+  $('nextPlatoonBtn').onclick = nextPlatoon;
+  $('undoBtn').onclick = undo;
+  $('reloadBtn').onclick = () => loadFromSheet(true);
+  $('writerBtn').onclick = configureWriter;
+  $('resetBtn').onclick = reset;
+  $('platoonMode').onclick = () => setMode('PLATOON');
+  $('finalMode').onclick = () => setMode('FINAL');
+  $('sourceRound1').onclick = () => switchSource('ROUND_1');
+  $('sourceRound2').onclick = () => switchSource('ROUND_2');
+  $('sourceRound3').onclick = () => switchSource('ROUND_3');
+  $('sourceFinal').onclick = () => switchSource('FINAL');
+  loadFromSheet(false);
+})();
+</script>
+</body>
+</html>
