@@ -3,469 +3,529 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WoT Platoon Cup Stats Overlay v4</title>
+  <title>WoT Platoon Cup Stats Overlay</title>
+
   <style>
     :root {
-      --bg-1: rgba(7, 12, 18, .96);
-      --bg-2: rgba(16, 25, 34, .95);
-      --panel: rgba(255, 255, 255, .055);
-      --panel-border: rgba(255, 255, 255, .10);
-      --text: #f6f8fb;
-      --muted: #9eacbb;
-      --orange: #ff8a00;
-      --cyan: #40e5dd;
-      --green: #7df000;
-      --red: #ff5368;
-      --blue: #77a7ff;
-      --gold: #ffd24d;
+      --bg-1: rgba(15, 17, 22, 0.95);
+      --bg-2: rgba(27, 31, 40, 0.96);
+
+      --line: rgba(255, 255, 255, 0.10);
+      --text: #f6f7fb;
+
+      --gold: #ffb300;
+      --gold-2: #ff7a00;
+      --gold-soft: rgba(255, 140, 0, 0.18);
+
+      --green: #24ff6d;
+      --green-soft: rgba(36, 255, 109, 0.16);
+
+      --red: #ff344c;
+      --red-soft: rgba(255, 52, 76, 0.15);
+
+      --blue: #78a7ff;
+      --blue-soft: rgba(120, 167, 255, 0.14);
+
+      --cyan: #4cecff;
+      --cyan-soft: rgba(76, 236, 255, 0.14);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       height: 100%;
       margin: 0;
       overflow: hidden;
       background: transparent;
-    }
-
-    body {
       font-family: Inter, Arial, Helvetica, sans-serif;
       color: var(--text);
     }
 
-    .widget {
-      width: 760px;
-      height: 360px;
+    .overlay {
       position: relative;
+      width: 640px;
+      height: 640px;
       overflow: hidden;
-      padding: 17px;
-      border: 1px solid rgba(255, 138, 0, .72);
-      border-radius: 24px;
+      border-radius: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       background:
-        radial-gradient(circle at 9% 12%, rgba(0, 195, 255, .13), transparent 31%),
-        radial-gradient(circle at 91% 4%, rgba(255, 138, 0, .12), transparent 36%),
-        linear-gradient(145deg, var(--bg-2), var(--bg-1));
+        radial-gradient(circle at 15% 12%, rgba(255,255,255,0.05), transparent 24%),
+        radial-gradient(circle at 90% 85%, rgba(255,150,0,0.08), transparent 26%),
+        linear-gradient(180deg, var(--bg-2), var(--bg-1));
       box-shadow:
-        0 0 28px rgba(255, 138, 0, .20),
-        inset 0 1px 0 rgba(255,255,255,.04);
+        0 22px 50px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
-    .widget::before {
+    .overlay::before {
       content: "";
       position: absolute;
       inset: 0;
       pointer-events: none;
       background:
-        linear-gradient(128deg, transparent 0 67%, rgba(255, 138, 0, .055) 67.2% 68.0%, transparent 68.2%),
-        repeating-linear-gradient(90deg, transparent 0 38px, rgba(255,255,255,.012) 39px 40px);
+        linear-gradient(126deg, transparent 0 74%, rgba(255,255,255,0.03) 74.4%, transparent 75%),
+        linear-gradient(180deg, rgba(255,255,255,0.025), transparent 28%);
     }
 
-    .corner {
-      position: absolute;
-      width: 38px;
-      height: 38px;
-      pointer-events: none;
-    }
-    .corner.tl { top: 0; left: 0; border-top: 3px solid var(--orange); border-left: 3px solid var(--orange); border-radius: 23px 0 0 0; }
-    .corner.br { right: 0; bottom: 0; border-right: 3px solid var(--orange); border-bottom: 3px solid var(--orange); border-radius: 0 0 23px 0; }
-
-    .header {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 150px;
-      gap: 14px;
-      align-items: stretch;
+    .wrap {
       position: relative;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 24px 28px 26px;
     }
 
-    .identity {
-      min-width: 0;
-      padding: 3px 2px 0;
-    }
-
-    .eyebrow {
-      color: var(--muted);
+    .kicker {
+      color: #b7bdc8;
       font-size: 11px;
-      line-height: 1;
-      font-weight: 900;
+      font-weight: 800;
       letter-spacing: 2px;
       text-transform: uppercase;
     }
 
-    .title {
+    .header {
       margin-top: 8px;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: #ffffff;
-      font-size: 31px;
-      line-height: 1;
-      font-weight: 1000;
-      letter-spacing: .2px;
-      text-transform: uppercase;
-      text-shadow: 0 0 18px rgba(255, 138, 0, .22);
+      min-height: 118px;
     }
 
-    .map-chip {
+    .title {
+      display: -webkit-box;
+      overflow: hidden;
+      color: #ffffff;
+      font-size: 38px;
+      font-weight: 1000;
+      line-height: 1.04;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 16px rgba(255,255,255,0.08);
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .title.long-title {
+      font-size: 32px;
+      line-height: 1.08;
+    }
+
+    .map-pill {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      margin-top: 13px;
+      gap: 10px;
       max-width: 100%;
-      min-height: 28px;
-      padding: 5px 10px;
-      border: 1px solid rgba(64,229,221,.30);
-      border-radius: 999px;
-      background: rgba(64,229,221,.07);
-      color: #d9f9f8;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .3px;
-    }
-    .map-chip .muted { color: #9bb2be; }
-    .map-chip #mapTitle {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .round-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-height: 94px;
-      padding: 12px 10px;
-      border: 1px solid rgba(255,138,0,.62);
-      border-radius: 18px;
-      background: linear-gradient(145deg, rgba(255,138,0,.15), rgba(255,138,0,.055));
-      text-align: center;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-    }
-
-    .round-label {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-    }
-
-    .round-value {
-      margin-top: 8px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--orange);
-      font-size: 31px;
-      line-height: 1;
-      font-weight: 1000;
-      text-transform: uppercase;
-      text-shadow: 0 0 13px rgba(255,138,0,.26);
-    }
-
-    .content {
-      display: grid;
-      grid-template-columns: 250px minmax(0, 1fr);
-      gap: 13px;
-      height: 209px;
-      margin-top: 15px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .gold-card {
-      position: relative;
-      overflow: hidden;
-      padding: 17px;
-      border: 1px solid rgba(255,210,77,.28);
-      border-radius: 18px;
-      background:
-        radial-gradient(circle at 84% 18%, rgba(255,210,77,.17), transparent 34%),
-        linear-gradient(145deg, rgba(255,210,77,.085), rgba(255,255,255,.035));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
-    }
-
-    .gold-card::after {
-      content: "";
-      position: absolute;
-      width: 110px;
-      height: 110px;
-      right: -42px;
-      bottom: -42px;
-      border: 1px solid rgba(255,210,77,.20);
-      border-radius: 50%;
-      box-shadow: 0 0 0 14px rgba(255,210,77,.035), 0 0 0 28px rgba(255,210,77,.018);
-    }
-
-    .gold-icon {
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(255,210,77,.33);
-      border-radius: 50%;
-      background: rgba(255,210,77,.10);
-      color: var(--gold);
-      font-size: 21px;
-      box-shadow: 0 0 18px rgba(255,210,77,.10);
-    }
-
-    .gold-label {
       margin-top: 16px;
-      color: #d1bf77;
-      font-size: 11px;
-      line-height: 1.15;
-      font-weight: 1000;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-    }
-
-    .gold-value {
-      margin-top: 9px;
-      color: var(--gold);
-      font-size: 42px;
-      line-height: 1;
-      font-weight: 1000;
-      white-space: nowrap;
-      text-shadow: 0 0 17px rgba(255,210,77,.18);
-    }
-
-    .gold-note {
-      margin-top: 12px;
-      color: rgba(231, 220, 173, .67);
-      font-size: 11px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(76, 236, 255, 0.2);
+      background: rgba(76, 236, 255, 0.08);
+      color: #d8fbff;
+      font-size: 18px;
       font-weight: 800;
-      letter-spacing: .3px;
+    }
+
+    .map-pill span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-template-rows: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      gap: 14px;
+      margin-top: 12px;
     }
 
-    .stat {
+    .stat-card {
       position: relative;
+      min-height: 108px;
       overflow: hidden;
-      padding: 13px 14px;
-      border: 1px solid var(--panel-border);
-      border-radius: 16px;
-      background: linear-gradient(145deg, rgba(255,255,255,.067), rgba(255,255,255,.030));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+      padding: 16px 18px 14px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      display: flex;
+      flex-direction: column;
     }
 
-    .stat::before {
+    .stat-card::after {
       content: "";
       position: absolute;
-      top: 0;
+      right: 0;
+      bottom: 0;
       left: 0;
-      width: 4px;
-      height: 100%;
+      height: 3px;
       background: currentColor;
-      opacity: .82;
+      opacity: 0.95;
     }
 
-    .stat-label {
-      margin-left: 5px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 1000;
-      letter-spacing: 1px;
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stat-title {
+      color: #b2bac4;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.55px;
+      line-height: 1.2;
       text-transform: uppercase;
     }
 
-    .stat-value {
-      margin-top: 10px;
-      margin-left: 5px;
-      color: currentColor;
-      font-size: 37px;
-      line-height: 1;
-      font-weight: 1000;
-      white-space: nowrap;
+    .mini-dot {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 16px currentColor;
+      opacity: 0.95;
     }
 
-    .battle { color: var(--cyan); }
-    .wins { color: var(--green); }
-    .losses { color: var(--red); }
-    .winrate { color: var(--blue); }
+    .stat-value {
+      width: 100%;
+      margin-top: 12px;
+      color: currentColor;
+      font-size: 54px;
+      font-weight: 1000;
+      line-height: 0.95;
+      text-align: center;
+      text-shadow: 0 0 14px rgba(255,255,255,0.05);
+      margin-left: auto;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .battles {
+      color: var(--cyan);
+      background: linear-gradient(180deg, var(--cyan-soft), rgba(255,255,255,0.02));
+    }
+
+    .rate {
+      color: var(--blue);
+      background: linear-gradient(180deg, var(--blue-soft), rgba(255,255,255,0.02));
+    }
+
+    .wins {
+      color: var(--green);
+      background: linear-gradient(180deg, var(--green-soft), rgba(255,255,255,0.02));
+    }
+
+    .losses {
+      color: var(--red);
+      background: linear-gradient(180deg, var(--red-soft), rgba(255,255,255,0.02));
+    }
+
+    .gold-block {
+      position: relative;
+      min-height: 168px;
+      margin-top: 16px;
+      padding: 24px 22px 18px;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid rgba(255, 153, 0, 0.22);
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255, 184, 0, 0.14), transparent 28%),
+        radial-gradient(circle at 88% 75%, rgba(255, 106, 0, 0.15), transparent 30%),
+        linear-gradient(180deg, rgba(255, 144, 0, 0.14), rgba(255, 108, 0, 0.08));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 0 24px rgba(255, 136, 0, 0.08);
+    }
+
+    .gold-block::before {
+      content: "";
+      position: absolute;
+      right: -24px;
+      bottom: -26px;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 170, 0, 0.12);
+      box-shadow:
+        0 0 0 18px rgba(255, 170, 0, 0.03),
+        0 0 0 36px rgba(255, 170, 0, 0.015);
+    }
+
+    .gold-label {
+      color: #ffd079;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 1.8px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .gold-value {
+      width: 100%;
+      margin-top: 22px;
+      color: #ffffff;
+      font-size: 92px;
+      font-weight: 1000;
+      letter-spacing: 1px;
+      line-height: 0.95;
+      text-align: center;
+      text-shadow:
+        0 0 18px rgba(255,255,255,0.07),
+        0 0 22px rgba(255, 166, 0, 0.10);
+    }
 
     .error {
       display: none;
-      position: absolute;
-      left: 18px;
-      right: 18px;
-      bottom: 10px;
-      z-index: 3;
-      padding: 6px 9px;
-      border-radius: 9px;
-      background: rgba(70, 10, 18, .82);
-      color: #ffadb7;
-      font-size: 11px;
-      font-weight: 900;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(90, 10, 18, 0.82);
+      color: #ffbbc4;
+      font-size: 12px;
+      font-weight: 700;
     }
   </style>
 </head>
+
 <body>
-  <div class="widget">
-    <div class="corner tl"></div>
-    <div class="corner br"></div>
+  <div class="overlay">
+    <div class="wrap">
 
-    <div class="header">
-      <div class="identity">
-        <div class="eyebrow" id="blockTitle">WORLD OF TANKS • БИТВА ВЗВОДІВ</div>
-        <div class="title" id="streamTitle">ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ</div>
-        <div class="map-chip"><span>🗺️</span><span class="muted">Карта:</span><span id="mapTitle">ХІММЕЛЬСДОРФ</span></div>
+      <div class="kicker" id="blockTitle">
+        WORLD OF TANKS • БИТВА ВЗВОДІВ
       </div>
 
-      <div class="round-card">
-        <div class="round-label">Поточний тур</div>
-        <div class="round-value" id="roundTitle">ТУР 1</div>
-      </div>
-    </div>
+      <div class="header">
+        <div class="title" id="streamTitle">
+          ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ
+        </div>
 
-    <div class="content">
-      <div class="gold-card">
-        <div class="gold-icon">🪙</div>
-        <div class="gold-label">Золота переможцям</div>
-        <div class="gold-value" id="gold">0</div>
-        <div class="gold-note">1 поразка = 1 500 золота</div>
+        <div class="map-pill">
+          🗺️
+          <span id="mapTitle">ХІММЕЛЬСДОРФ</span>
+        </div>
       </div>
 
       <div class="stats-grid">
-        <div class="stat battle">
-          <div class="stat-label">Зіграно боїв</div>
+        <div class="stat-card battles">
+          <div class="stat-header">
+            <div class="stat-title">Кількість боїв</div>
+            <div class="mini-dot"></div>
+          </div>
           <div class="stat-value" id="battles">0</div>
         </div>
-        <div class="stat wins">
-          <div class="stat-label">Наші перемоги</div>
-          <div class="stat-value" id="wins">0</div>
-        </div>
-        <div class="stat losses">
-          <div class="stat-label">Наші поразки</div>
-          <div class="stat-value" id="losses">0</div>
-        </div>
-        <div class="stat winrate">
-          <div class="stat-label">Відсоток перемог</div>
+
+        <div class="stat-card rate">
+          <div class="stat-header">
+            <div class="stat-title">Відсоток перемог</div>
+            <div class="mini-dot"></div>
+          </div>
           <div class="stat-value" id="winRate">0%</div>
         </div>
-      </div>
-    </div>
 
-    <div class="error" id="error"></div>
+        <div class="stat-card wins">
+          <div class="stat-header">
+            <div class="stat-title">Наші перемоги</div>
+            <div class="mini-dot"></div>
+          </div>
+          <div class="stat-value" id="wins">0</div>
+        </div>
+
+        <div class="stat-card losses">
+          <div class="stat-header">
+            <div class="stat-title">Наші поразки</div>
+            <div class="mini-dot"></div>
+          </div>
+          <div class="stat-value" id="losses">0</div>
+        </div>
+      </div>
+
+      <div class="gold-block">
+        <div class="gold-label">Золота переможцям</div>
+        <div class="gold-value" id="gold">0</div>
+      </div>
+
+      <div class="error" id="error"></div>
+
+    </div>
   </div>
 
-<script>
-(() => {
-  const SHEET_ID = '17phnEn-NW-OnrZg4DcW65r-Xoq6ScsdVjS5yL0SS3fk';
-  const INPUT_SHEET_GID = '703438953'; // аркуш 33
-  const GOLD_PER_LOSS = 1500;
-  let refreshMs = 5000;
-  let refreshTimer = null;
+  <script>
+    (() => {
+      const SHEET_ID = "17phnEn-NW-OnrZg4DcW65r-Xoq6ScsdVjS5yL0SS3fk";
+      const INPUT_SHEET_GID = "703438953";
+      const GOLD_PER_LOSS = 1500;
 
-  const el = id => document.getElementById(id);
+      let refreshMs = 5000;
+      let refreshTimer = null;
 
-  function loadGoogleSheetJsonp() {
-    return new Promise((resolve, reject) => {
-      const callbackName = `__wotStatsOverlay_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      const script = document.createElement('script');
-      let finished = false;
-      const cleanup = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timer);
-        script.remove();
-        try { delete window[callbackName]; } catch { window[callbackName] = undefined; }
-      };
-      window[callbackName] = data => { cleanup(); resolve(data); };
-      script.onerror = () => { cleanup(); reject(new Error('Google Sheets недоступний')); };
-      const timer = setTimeout(() => { cleanup(); reject(new Error('Google Sheets не відповів')); }, 12000);
-      const tqx = `out:json;responseHandler:${callbackName}`;
-      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}&gid=${encodeURIComponent(INPUT_SHEET_GID)}&range=${encodeURIComponent('A1:C30')}&headers=0&_=${Date.now()}`;
-      document.head.appendChild(script);
-    });
-  }
+      const el = (id) => document.getElementById(id);
 
-  function cellValue(cell) {
-    if (!cell) return '';
-    if (cell.f !== undefined && cell.f !== null && String(cell.f).trim() !== '') return cell.f;
-    if (cell.v !== undefined && cell.v !== null) return cell.v;
-    return '';
-  }
+      function loadGoogleSheetJsonp() {
+        return new Promise((resolve, reject) => {
+          const callbackName = `__wotStatsOverlay_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const script = document.createElement("script");
+          let finished = false;
 
-  function rowsToGrid(data) {
-    return (data?.table?.rows || []).map(row => (row.c || []).map(cellValue));
-  }
+          const cleanup = () => {
+            if (finished) return;
+            finished = true;
+            clearTimeout(timer);
+            script.remove();
 
-  function setting(grid, name, fallback = '') {
-    const wanted = String(name).trim().toUpperCase();
-    for (const row of grid) {
-      if (String(row?.[0] ?? '').trim().toUpperCase() === wanted) {
-        const value = row?.[1];
-        return value === undefined || value === null || String(value).trim() === '' ? fallback : value;
+            try {
+              delete window[callbackName];
+            } catch {
+              window[callbackName] = undefined;
+            }
+          };
+
+          window[callbackName] = (data) => {
+            cleanup();
+            resolve(data);
+          };
+
+          script.onerror = () => {
+            cleanup();
+            reject(new Error("Google Sheets недоступний"));
+          };
+
+          const timer = setTimeout(() => {
+            cleanup();
+            reject(new Error("Google Sheets не відповів"));
+          }, 12000);
+
+          const tqx = `out:json;responseHandler:${callbackName}`;
+
+          script.src =
+            `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
+            `?tqx=${encodeURIComponent(tqx)}` +
+            `&gid=${encodeURIComponent(INPUT_SHEET_GID)}` +
+            `&range=${encodeURIComponent("A1:C30")}` +
+            `&headers=0` +
+            `&_=${Date.now()}`;
+
+          document.head.appendChild(script);
+        });
       }
-    }
-    return fallback;
-  }
 
-  function toNumber(value, fallback = 0) {
-    const normalized = String(value ?? '')
-      .replace(/\s/g, '')
-      .replace(',', '.')
-      .replace(/[^0-9.+-]/g, '');
-    const number = Number(normalized);
-    return Number.isFinite(number) ? number : fallback;
-  }
+      function cellValue(cell) {
+        if (!cell) return "";
 
-  function formatInteger(value) {
-    return Math.round(value).toLocaleString('uk-UA');
-  }
+        if (cell.f !== undefined && cell.f !== null && String(cell.f).trim() !== "") {
+          return cell.f;
+        }
 
-  function formatPercent(value) {
-    const rounded = Math.round(value * 10) / 10;
-    return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
-  }
+        if (cell.v !== undefined && cell.v !== null) {
+          return cell.v;
+        }
 
-  async function refresh() {
-    try {
-      const grid = rowsToGrid(await loadGoogleSheetJsonp());
-      const roundTitle = String(setting(grid, 'ROUND_TITLE', 'ТУР 1')).trim() || 'ТУР 1';
-      const mapTitle = String(setting(grid, 'MAP', 'ХІММЕЛЬСДОРФ')).trim() || 'ХІММЕЛЬСДОРФ';
-      const wins = Math.max(0, toNumber(setting(grid, 'WINS', 0)));
-      const losses = Math.max(0, toNumber(setting(grid, 'LOSSES', 0)));
-      const battles = wins + losses;
-      const winRate = battles > 0 ? (wins / battles) * 100 : 0;
-      const gold = losses * GOLD_PER_LOSS;
-      const title = String(setting(grid, 'STREAM_TITLE', 'ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ')).trim() || 'ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ';
-      const blockTitle = String(setting(grid, 'BLOCK_TITLE', 'WORLD OF TANKS • БИТВА ВЗВОДІВ')).trim() || 'WORLD OF TANKS • БИТВА ВЗВОДІВ';
-      const refreshSeconds = Math.min(60, Math.max(3, toNumber(setting(grid, 'AUTO_REFRESH_SECONDS', 5), 5)));
-      refreshMs = refreshSeconds * 1000;
+        return "";
+      }
 
-      el('blockTitle').textContent = blockTitle;
-      el('streamTitle').textContent = title;
-      el('mapTitle').textContent = mapTitle;
-      el('roundTitle').textContent = roundTitle;
-      el('battles').textContent = formatInteger(battles);
-      el('wins').textContent = formatInteger(wins);
-      el('losses').textContent = formatInteger(losses);
-      el('winRate').textContent = formatPercent(winRate);
-      el('gold').textContent = formatInteger(gold);
-      el('error').style.display = 'none';
-      el('error').textContent = '';
-    } catch (error) {
-      el('error').textContent = `Помилка отримання даних: ${error.message}`;
-      el('error').style.display = 'block';
-    } finally {
-      clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(refresh, refreshMs);
-    }
-  }
+      function rowsToGrid(data) {
+        return (data?.table?.rows || []).map((row) => (row.c || []).map(cellValue));
+      }
 
-  refresh();
-})();
-</script>
+      function setting(grid, name, fallback = "") {
+        const wanted = String(name).trim().toUpperCase();
+
+        for (const row of grid) {
+          const key = String(row?.[0] ?? "").trim().toUpperCase();
+
+          if (key === wanted) {
+            const value = row?.[1];
+
+            if (value === undefined || value === null || String(value).trim() === "") {
+              return fallback;
+            }
+
+            return value;
+          }
+        }
+
+        return fallback;
+      }
+
+      function toNumber(value, fallback = 0) {
+        const normalized = String(value ?? "")
+          .replace(/\s/g, "")
+          .replace(",", ".")
+          .replace(/[^0-9.+-]/g, "");
+
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : fallback;
+      }
+
+      function formatInteger(value) {
+        return Math.round(value).toLocaleString("uk-UA");
+      }
+
+      function formatPercent(value) {
+        const rounded = Math.round(value * 10) / 10;
+        return (Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)) + "%";
+      }
+
+      function applyTitleSize(title) {
+        const titleElement = el("streamTitle");
+        titleElement.classList.toggle("long-title", title.length > 22);
+      }
+
+      async function refresh() {
+        try {
+          const data = await loadGoogleSheetJsonp();
+          const grid = rowsToGrid(data);
+
+          const mapTitle = String(setting(grid, "MAP", "ХІММЕЛЬСДОРФ")).trim() || "ХІММЕЛЬСДОРФ";
+          const streamTitle = String(setting(grid, "STREAM_TITLE", "ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ")).trim() || "ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ";
+          const blockTitle = String(setting(grid, "BLOCK_TITLE", "WORLD OF TANKS • БИТВА ВЗВОДІВ")).trim() || "WORLD OF TANKS • БИТВА ВЗВОДІВ";
+
+          const wins = Math.max(0, toNumber(setting(grid, "WINS", 0)));
+          const losses = Math.max(0, toNumber(setting(grid, "LOSSES", 0)));
+
+          const battles = wins + losses;
+          const winRate = battles > 0 ? (wins / battles) * 100 : 0;
+          const gold = losses * GOLD_PER_LOSS;
+
+          const refreshSeconds = Math.min(
+            60,
+            Math.max(3, toNumber(setting(grid, "AUTO_REFRESH_SECONDS", 5), 5))
+          );
+
+          refreshMs = refreshSeconds * 1000;
+
+          el("blockTitle").textContent = blockTitle;
+          el("streamTitle").textContent = streamTitle;
+          applyTitleSize(streamTitle);
+
+          el("mapTitle").textContent = mapTitle;
+
+          el("battles").textContent = formatInteger(battles);
+          el("wins").textContent = formatInteger(wins);
+          el("losses").textContent = formatInteger(losses);
+          el("winRate").textContent = formatPercent(winRate);
+          el("gold").textContent = formatInteger(gold);
+
+          el("error").style.display = "none";
+          el("error").textContent = "";
+        } catch (error) {
+          el("error").textContent = `Помилка отримання даних: ${error.message}`;
+          el("error").style.display = "block";
+        } finally {
+          clearTimeout(refreshTimer);
+          refreshTimer = setTimeout(refresh, refreshMs);
+        }
+      }
+
+      refresh();
+    })();
+  </script>
 </body>
 </html>
