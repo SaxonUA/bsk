@@ -4,7 +4,8 @@ import { getDatabase, ref, onValue, get, set, update, serverTimestamp } from 'ht
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 
 const SHEET_ID = '17phnEn-NW-OnrZg4DcW65r-Xoq6ScsdVjS5yL0SS3fk';
-const INPUT_SHEET_GID = '703438953'; // аркуш 33
+const INPUT_SHEET_GID = '703438953'; // аркуш 33: списки гравців для колеса
+const PLATOONS_SHEET_GID = '398111394'; // аркуш 44: сформовані взводи за турами
 const WRITER_URL = 'https://script.google.com/macros/s/AKfycby3U55n5334RbGZyrXp1vHN-rMkqOE7A8txmPh8N8vt26Fb6tAqya6Gb2BTCokgwIpM2w/exec';
 const ROOM_ID = sanitizeRoom(new URLSearchParams(location.search).get('room') || 'main');
 const IS_CONTROL = new URLSearchParams(location.search).get('view') === 'control' || /control\.html$/i.test(location.pathname);
@@ -32,6 +33,10 @@ let finalizedSpinIds = new Set();
 let state = freshState();
 let sheetLists = { ROUND_1: [], ROUND_2: [], ROUND_3: [], FINAL: [] };
 let sheetDefaultSource = 'ROUND_1';
+let sheetPlatoonsByRound = emptyPlatoonsByRound();
+let sheetPlatoonsLoaded = false;
+let sheetPlatoonsRefreshInFlight = null;
+let sheetPlatoonsPollTimer = null;
 let pendingWrites = loadPendingWrites();
 let persistentPlatoons = emptyPlatoonsByRound();
 
@@ -358,8 +363,14 @@ function roundTitle(source) {
 function renderPlatoonsBoard() {
   const board = $('platoonsBoard');
   if (!board) return;
+  if (!sheetPlatoonsLoaded) {
+    board.innerHTML = '<div class="muted">Завантаження взводів із Google Sheets…</div>';
+    return;
+  }
   const groups = ROUND_SOURCES.map(source => {
-    const platoons = state.platoonsByRound?.[source] || [];
+    // Єдине джерело правди для правої панелі — аркуш 44 у Google Sheets.
+    // Тому ручна заміна гравця в таблиці автоматично з'являється у всіх OBS.
+    const platoons = sheetPlatoonsByRound[source] || [];
     const isActive = state.mode === 'PLATOON' && state.source === source;
     const forming = isActive && state.selected.length ? state.selected : [];
     const rows = platoons.map((players, index) => `
@@ -369,10 +380,10 @@ function renderPlatoonsBoard() {
       </div>`).join('');
     const formingRow = forming.length ? `
       <div class="platoon-row forming">
-        <div class="platoon-number">Взвод ${platoons.length + 1}</div>
+        <div class="platoon-number">Новий</div>
         <div class="platoon-members">Формується: ${forming.map(escapeHtml).join(' • ')}${forming.length < 3 ? ' • …' : ''}</div>
       </div>` : '';
-    const empty = !rows && !formingRow ? '<div class="empty-round">Ще немає сформованих взводів</div>' : '';
+    const empty = !rows && !formingRow ? '<div class="empty-round">Ще немає сформованих взводів у таблиці</div>' : '';
     return `
       <div class="round-block${isActive ? ' active' : ''}">
         <div class="round-head">
@@ -462,7 +473,7 @@ function uniqueNames(grid, col) {
   return names;
 }
 
-function loadGoogleSheetJsonp() {
+function loadGoogleSheetJsonp(gid = INPUT_SHEET_GID, range = 'A1:G250', headers = 1) {
   return new Promise((resolve, reject) => {
     const callbackName = `__wotPlatoonCup_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
@@ -478,13 +489,56 @@ function loadGoogleSheetJsonp() {
     script.onerror = () => { cleanup(); reject(new Error('Google Sheets недоступний. Перевір доступ: «Усі, хто має посилання» → «Читач»')); };
     const timer = setTimeout(() => { cleanup(); reject(new Error('Google Sheets не відповів')); }, 12000);
     const tqx = `out:json;responseHandler:${callbackName}`;
-    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}&gid=${encodeURIComponent(INPUT_SHEET_GID)}&range=${encodeURIComponent('A1:G250')}&headers=1&_=${Date.now()}`;
+    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=${encodeURIComponent(tqx)}&gid=${encodeURIComponent(gid)}&range=${encodeURIComponent(range)}&headers=${encodeURIComponent(headers)}&_=${Date.now()}`;
     document.head.appendChild(script);
   });
 }
 
+function readPlatoonsFromGrid(grid, firstPlayerColumn) {
+  const result = [];
+  for (const row of grid) {
+    const players = [0, 1, 2]
+      .map(offset => String(row?.[firstPlayerColumn + offset] ?? '').trim())
+      .filter(Boolean);
+    if (players.length) result.push(players);
+  }
+  return result;
+}
+
+async function fetchSheetPlatoons() {
+  // Аркуш 44 має три блоки: ROUND_1 (B:D), ROUND_2 (H:J), ROUND_3 (N:P).
+  // Читаємо без заголовків і пропускаємо перші два службові рядки вручну.
+  const grid = rowsToGrid(await loadGoogleSheetJsonp(PLATOONS_SHEET_GID, 'A1:Q250', 0));
+  const dataRows = grid.slice(2);
+  sheetPlatoonsByRound = {
+    ROUND_1: readPlatoonsFromGrid(dataRows, 1),
+    ROUND_2: readPlatoonsFromGrid(dataRows, 7),
+    ROUND_3: readPlatoonsFromGrid(dataRows, 13),
+  };
+  sheetPlatoonsLoaded = true;
+  renderPlatoonsBoard();
+  return sheetPlatoonsByRound;
+}
+
+async function refreshSheetPlatoons(silent = true) {
+  if (sheetPlatoonsRefreshInFlight) return sheetPlatoonsRefreshInFlight;
+  sheetPlatoonsRefreshInFlight = fetchSheetPlatoons()
+    .catch(error => {
+      if (!silent && IS_CONTROL) setStatus(`Не вдалося оновити взводи з аркуша 44: ${error.message}`, 'error');
+      return sheetPlatoonsByRound;
+    })
+    .finally(() => { sheetPlatoonsRefreshInFlight = null; });
+  return sheetPlatoonsRefreshInFlight;
+}
+
+function startSheetPlatoonsPolling() {
+  refreshSheetPlatoons(true);
+  if (sheetPlatoonsPollTimer) clearInterval(sheetPlatoonsPollTimer);
+  sheetPlatoonsPollTimer = setInterval(() => refreshSheetPlatoons(true), 5000);
+}
+
 async function fetchSheetLists() {
-  const grid = rowsToGrid(await loadGoogleSheetJsonp());
+  const grid = rowsToGrid(await loadGoogleSheetJsonp(INPUT_SHEET_GID, 'A1:G250', 1));
   const requestedSource = String(setting(grid, 'ACTIVE_LIST', 'ROUND_1')).trim().toUpperCase();
   sheetDefaultSource = columns[requestedSource] !== undefined ? requestedSource : 'ROUND_1';
   sheetLists = {
@@ -499,7 +553,7 @@ async function loadFromSheet(force = false) {
   if (!IS_CONTROL) return;
   setStatus('Завантаження даних з Google Sheets…');
   try {
-    await fetchSheetLists();
+    await Promise.all([fetchSheetLists(), refreshSheetPlatoons(true)]);
     if (!force) {
       const snap = await get(stateRef);
       if (snap.exists()) {
@@ -545,7 +599,7 @@ async function broadcastState() {
 async function switchSource(source) {
   if (!IS_CONTROL || spinning || columns[source] === undefined) return;
   setStatus(`${roundTitle(source)}: оновлення списку з Google Sheets…`);
-  await fetchSheetLists();
+  await Promise.all([fetchSheetLists(), refreshSheetPlatoons(true)]);
   // Перед зміною туру зберігаємо дошку взводів окремо від колеса.
   // Завдяки цьому оновлення списку гравців одного туру ніколи не стирає результати інших турів.
   applyPersistentPlatoons(state);
@@ -631,6 +685,8 @@ async function flushPendingWrites() {
       savePendingWrites();
     }
     renderWriterStatus('');
+    // Після запису перечитуємо аркуш 44, щоб праворуч показувалося саме те, що реально є у таблиці.
+    setTimeout(() => refreshSheetPlatoons(true), 900);
   } catch (error) {
     renderWriterStatus(`⚠️ Запис не виконано: ${error.message}`, true);
   } finally {
@@ -802,7 +858,7 @@ async function resetState() {
   if (!IS_CONTROL || spinning) return;
   const source = state.source;
   const label = source === 'FINAL' ? 'фіналу' : roundTitle(source);
-  if (!confirm(`Скинути колесо для ${label}? Поточний вибір буде очищено.${ROUND_SOURCES.includes(source) ? ' Сформовані взводи цього туру також буде видалено.' : ''}`)) return;
+  if (!confirm(`Скинути колесо для ${label}? Поточний вибір буде очищено. Взводи у Google Sheets залишаться без змін.`)) return;
   const platoonsByRound = mergePlatoonsByRound(persistentPlatoons, normalizePlatoonsByRound(state.platoonsByRound, state));
   if (ROUND_SOURCES.includes(source)) platoonsByRound[source] = [];
   const sourceStates = normalizeSourceStates(state.sourceStates, state);
@@ -855,6 +911,7 @@ async function initFirebase() {
     spinRef = ref(db, `rooms/${ROOM_ID}/spin`);
     platoonsRef = ref(db, `rooms/${ROOM_ID}/platoonsByRound`);
     firebaseReady = true;
+    startSheetPlatoonsPolling();
 
     onValue(ref(db, '.info/connected'), snap => {
       connected = snap.val() === true;
