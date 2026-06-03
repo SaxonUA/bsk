@@ -1,11 +1,9 @@
-// Встав сюди конфігурацію Web App із Firebase Console:
-// Project settings → General → Your apps → Web app → SDK setup and configuration → Config
-export const firebaseConfig = {
-  apiKey: 'PASTE_API_KEY_HERE',
-  authDomain: 'PASTE_PROJECT_ID_HERE.firebaseapp.com',
-  databaseURL: 'https://PASTE_DATABASE_URL_HERE',
-  projectId: 'PASTE_PROJECT_ID_HERE',
-  storageBucket: 'PASTE_PROJECT_ID_HERE.firebasestorage.app',
-  messagingSenderId: 'PASTE_MESSAGING_SENDER_ID_HERE',
-  appId: 'PASTE_APP_ID_HERE',
+window.BSK_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAReToMdKkWDRY4_BKwKEgXcMFu1S6y1O0",
+  authDomain: "saxonua-bsk-wheel.firebaseapp.com",
+  databaseURL: "https://saxonua-bsk-wheel-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "saxonua-bsk-wheel",
+  storageBucket: "saxonua-bsk-wheel.firebasestorage.app",
+  messagingSenderId: "778154597149",
+  appId: "1:778154597149:web:b5393300b537c3d7765ff4"
 };
