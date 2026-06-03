@@ -43,9 +43,18 @@ function emptyPlatoonsByRound() {
   return { ROUND_1: [], ROUND_2: [], ROUND_3: [] };
 }
 
+function emptySourceStates() {
+  return {
+    ROUND_1: { all: [], remaining: [], selected: [], rotation: 0, finalWinnerQueued: '' },
+    ROUND_2: { all: [], remaining: [], selected: [], rotation: 0, finalWinnerQueued: '' },
+    ROUND_3: { all: [], remaining: [], selected: [], rotation: 0, finalWinnerQueued: '' },
+    FINAL:   { all: [], remaining: [], selected: [], rotation: 0, finalWinnerQueued: '' },
+  };
+}
+
 function freshState() {
   return {
-    version: 4,
+    version: 5,
     source: 'ROUND_1',
     mode: 'PLATOON',
     all: [],
@@ -53,6 +62,7 @@ function freshState() {
     selected: [],
     log: [],
     platoonsByRound: emptyPlatoonsByRound(),
+    sourceStates: emptySourceStates(),
     finalWinnerQueued: '',
     rotation: 0,
   };
@@ -119,23 +129,77 @@ function normalizePlatoonsByRound(value, safeState = {}) {
   return result;
 }
 
-function ensureStateShape(value) {
-  const base = freshState();
+function normalizeNames(value) {
+  return Array.isArray(value) ? value.map(String).map(x => x.trim()).filter(Boolean) : [];
+}
+
+function normalizeSourceState(value) {
   const safe = value && typeof value === 'object' ? value : {};
   return {
-    ...base,
-    ...safe,
-    version: 4,
-    all: Array.isArray(safe.all) ? safe.all.map(String) : [],
-    remaining: Array.isArray(safe.remaining) ? safe.remaining.map(String) : [],
-    selected: Array.isArray(safe.selected) ? safe.selected.map(String) : [],
-    log: Array.isArray(safe.log) ? safe.log.map(String) : [],
-    platoonsByRound: normalizePlatoonsByRound(safe.platoonsByRound, safe),
+    all: normalizeNames(safe.all),
+    remaining: normalizeNames(safe.remaining),
+    selected: normalizeNames(safe.selected),
     rotation: Number.isFinite(Number(safe.rotation)) ? Number(safe.rotation) : 0,
+    finalWinnerQueued: String(safe.finalWinnerQueued || ''),
   };
 }
 
+function normalizeSourceStates(value, safeState = {}) {
+  const result = emptySourceStates();
+  const raw = value && typeof value === 'object' ? value : {};
+  for (const source of [...ROUND_SOURCES, 'FINAL']) result[source] = normalizeSourceState(raw[source]);
+  const active = columns[String(safeState.source || '')] !== undefined ? String(safeState.source) : 'ROUND_1';
+  if (!result[active].all.length && Array.isArray(safeState.all)) {
+    result[active] = normalizeSourceState({
+      all: safeState.all,
+      remaining: safeState.remaining,
+      selected: safeState.selected,
+      rotation: safeState.rotation,
+      finalWinnerQueued: safeState.finalWinnerQueued,
+    });
+  }
+  return result;
+}
+
+function sameNames(a, b) {
+  const left = normalizeNames(a);
+  const right = normalizeNames(b);
+  return left.length === right.length && left.every((name, index) => name === right[index]);
+}
+
+function saveActiveSnapshot(target = state) {
+  if (!target || columns[target.source] === undefined) return target;
+  target.sourceStates = normalizeSourceStates(target.sourceStates, target);
+  target.sourceStates[target.source] = normalizeSourceState({
+    all: target.all,
+    remaining: target.remaining,
+    selected: target.selected,
+    rotation: target.rotation,
+    finalWinnerQueued: target.finalWinnerQueued,
+  });
+  return target;
+}
+
+function ensureStateShape(value) {
+  const base = freshState();
+  const safe = value && typeof value === 'object' ? value : {};
+  const shaped = {
+    ...base,
+    ...safe,
+    version: 5,
+    all: normalizeNames(safe.all),
+    remaining: normalizeNames(safe.remaining),
+    selected: normalizeNames(safe.selected),
+    log: Array.isArray(safe.log) ? safe.log.map(String) : [],
+    platoonsByRound: normalizePlatoonsByRound(safe.platoonsByRound, safe),
+    sourceStates: normalizeSourceStates(safe.sourceStates, safe),
+    rotation: Number.isFinite(Number(safe.rotation)) ? Number(safe.rotation) : 0,
+  };
+  return saveActiveSnapshot(shaped);
+}
+
 function publicState() {
+  saveActiveSnapshot(state);
   return {
     ...ensureStateShape(state),
     updatedAt: serverTimestamp(),
@@ -280,7 +344,7 @@ function renderPlatoonsBoard() {
 }
 
 function render() {
-  $('activeList').textContent = state.source;
+  $('activeList').textContent = state.source === 'FINAL' ? 'ФІНАЛ' : roundTitle(state.source);
   $('sourceRound1').classList.toggle('active', state.source === 'ROUND_1');
   $('sourceRound2').classList.toggle('active', state.source === 'ROUND_2');
   $('sourceRound3').classList.toggle('active', state.source === 'ROUND_3');
@@ -394,8 +458,6 @@ async function loadFromSheet(force = false) {
   setStatus('Завантаження даних з Google Sheets…');
   try {
     await fetchSheetLists();
-    const source = sheetDefaultSource;
-    const all = [...sheetLists[source]];
     if (!force) {
       const snap = await get(stateRef);
       if (snap.exists()) {
@@ -406,19 +468,26 @@ async function loadFromSheet(force = false) {
         return;
       }
     }
+    const source = force && columns[state.source] !== undefined ? state.source : sheetDefaultSource;
+    const all = [...(sheetLists[source] || [])];
     const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
+    const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+    const sourceStates = normalizeSourceStates(state.sourceStates, state);
+    sourceStates[source] = normalizeSourceState({ all, remaining: all, selected: [], rotation: 0, finalWinnerQueued: '' });
     state = {
       ...freshState(),
       source,
       mode,
       all,
       remaining: [...all],
+      selected: [],
       log: [...(state.log || [])],
-      platoonsByRound: normalizePlatoonsByRound(state.platoonsByRound, state),
+      platoonsByRound,
+      sourceStates,
     };
     rotation = 0;
     await broadcastState();
-    setStatus(`Завантажено ${all.length} гравців із Google Sheets • ${new Date().toLocaleTimeString('uk-UA')}`, 'ok');
+    setStatus(`${roundTitle(source)}: завантажено ${all.length} гравців із відповідної колонки Google Sheets • ${new Date().toLocaleTimeString('uk-UA')}`, all.length ? 'ok' : '');
   } catch (error) {
     setStatus(`Помилка: ${error.message}`, 'error');
   }
@@ -427,17 +496,44 @@ async function loadFromSheet(force = false) {
 async function broadcastState() {
   if (!IS_CONTROL || !firebaseReady) return;
   state.rotation = rotation;
+  saveActiveSnapshot(state);
   await set(stateRef, publicState());
 }
 
 async function switchSource(source) {
   if (!IS_CONTROL || spinning || columns[source] === undefined) return;
+  setStatus(`${roundTitle(source)}: оновлення списку з Google Sheets…`);
+  await fetchSheetLists();
+  saveActiveSnapshot(state);
   const all = [...(sheetLists[source] || [])];
   const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-  state = { ...freshState(), source, mode, all, remaining: [...all] };
-  rotation = 0;
+  const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+  const sourceStates = normalizeSourceStates(state.sourceStates, state);
+  const cached = normalizeSourceState(sourceStates[source]);
+  const restoreCachedProgress = sameNames(cached.all, all);
+  const selectedSource = restoreCachedProgress
+    ? cached
+    : normalizeSourceState({ all, remaining: all, selected: [], rotation: 0, finalWinnerQueued: '' });
+  sourceStates[source] = selectedSource;
+  state = {
+    ...freshState(),
+    source,
+    mode,
+    all: [...selectedSource.all],
+    remaining: [...selectedSource.remaining],
+    selected: [...selectedSource.selected],
+    rotation: selectedSource.rotation,
+    finalWinnerQueued: selectedSource.finalWinnerQueued,
+    log: [...(state.log || [])],
+    platoonsByRound,
+    sourceStates,
+  };
+  rotation = state.rotation;
+  await set(spinRef, null);
   await broadcastState();
-  setStatus(all.length ? `${source}: завантажено ${all.length} гравців` : `${source}: список поки порожній`, all.length ? 'ok' : '');
+  setStatus(all.length
+    ? `${roundTitle(source)}: показано лише ${all.length} гравців цього туру${restoreCachedProgress ? ' • прогрес відновлено' : ''}`
+    : `${roundTitle(source)}: список поки порожній`, all.length ? 'ok' : '');
 }
 
 function callWriter(job) {
@@ -662,13 +758,17 @@ async function resetState() {
   if (!confirm(`Скинути колесо для ${label}? Поточний вибір буде очищено.${ROUND_SOURCES.includes(source) ? ' Сформовані взводи цього туру також буде видалено.' : ''}`)) return;
   const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
   if (ROUND_SOURCES.includes(source)) platoonsByRound[source] = [];
+  const sourceStates = normalizeSourceStates(state.sourceStates, state);
+  sourceStates[source] = normalizeSourceState({ all: state.all, remaining: state.all, selected: [], rotation: 0, finalWinnerQueued: '' });
   state = {
     ...freshState(),
     source,
     mode: state.mode,
     all: [...state.all],
     remaining: [...state.all],
+    selected: [],
     platoonsByRound,
+    sourceStates,
   };
   rotation = 0;
   await set(spinRef, null);
