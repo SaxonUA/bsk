@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="uk">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WoT Platoon Cup — керування</title></head>
+<body>
+<script>
+  const params = new URLSearchParams(location.search);
+  params.set('view', 'control');
+  if (!params.get('room')) params.set('room', 'main');
+  location.replace(`./index.html?${params.toString()}`);
+</script>
+</body>
+</html>

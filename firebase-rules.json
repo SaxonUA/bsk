@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === 'PASTE_CONTROLLER_UID_HERE'"
+      }
+    }
+  }
+}
