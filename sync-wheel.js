@@ -9,6 +9,7 @@ const WRITER_URL_KEY = 'wot_platoon_cup_writer_url_v1';
 const ROOM_ID = sanitizeRoom(new URLSearchParams(location.search).get('room') || 'main');
 const IS_CONTROL = new URLSearchParams(location.search).get('view') === 'control' || /control\.html$/i.test(location.pathname);
 const columns = { ROUND_1: 3, ROUND_2: 4, ROUND_3: 5, FINAL: 6 };
+const ROUND_SOURCES = ['ROUND_1', 'ROUND_2', 'ROUND_3'];
 const TAU = Math.PI * 2;
 const $ = id => document.getElementById(id);
 const canvas = $('wheel');
@@ -38,15 +39,20 @@ $('roomName').textContent = ROOM_ID;
 $('controllerUidBox').style.display = IS_CONTROL ? 'block' : 'none';
 $('controlHint').style.display = IS_CONTROL ? 'block' : 'none';
 
+function emptyPlatoonsByRound() {
+  return { ROUND_1: [], ROUND_2: [], ROUND_3: [] };
+}
+
 function freshState() {
   return {
-    version: 3,
+    version: 4,
     source: 'ROUND_1',
     mode: 'PLATOON',
     all: [],
     remaining: [],
     selected: [],
     log: [],
+    platoonsByRound: emptyPlatoonsByRound(),
     finalWinnerQueued: '',
     rotation: 0,
   };
@@ -87,16 +93,44 @@ function configLooksReady(config) {
     !String(config.databaseURL).includes('PASTE_');
 }
 
+function normalizePlatoon(value) {
+  return Array.isArray(value) ? value.map(String).map(x => x.trim()).filter(Boolean).slice(0, 3) : [];
+}
+
+function normalizePlatoonsByRound(value, safeState = {}) {
+  const result = emptyPlatoonsByRound();
+  const raw = value && typeof value === 'object' ? value : {};
+  for (const source of ROUND_SOURCES) {
+    result[source] = Array.isArray(raw[source])
+      ? raw[source].map(normalizePlatoon).filter(players => players.length)
+      : [];
+  }
+  // Сумісність із попередньою версією: відновлюємо вже сформовані тестові взводи з журналу.
+  const source = ROUND_SOURCES.includes(String(safeState.source || '')) ? String(safeState.source) : 'ROUND_1';
+  if (!result[source].length && Array.isArray(safeState.log)) {
+    for (const row of safeState.log) {
+      const text = String(row || '');
+      const prefix = '👥 Взвод сформовано:';
+      if (!text.startsWith(prefix)) continue;
+      const players = text.slice(prefix.length).split('•').map(x => x.trim()).filter(Boolean).slice(0, 3);
+      if (players.length) result[source].push(players);
+    }
+  }
+  return result;
+}
+
 function ensureStateShape(value) {
   const base = freshState();
   const safe = value && typeof value === 'object' ? value : {};
   return {
     ...base,
     ...safe,
+    version: 4,
     all: Array.isArray(safe.all) ? safe.all.map(String) : [],
     remaining: Array.isArray(safe.remaining) ? safe.remaining.map(String) : [],
     selected: Array.isArray(safe.selected) ? safe.selected.map(String) : [],
     log: Array.isArray(safe.log) ? safe.log.map(String) : [],
+    platoonsByRound: normalizePlatoonsByRound(safe.platoonsByRound, safe),
     rotation: Number.isFinite(Number(safe.rotation)) ? Number(safe.rotation) : 0,
   };
 }
@@ -211,8 +245,42 @@ function drawWheel() {
   ctx.restore();
 }
 
+function roundTitle(source) {
+  return ({ ROUND_1: 'ТУР 1', ROUND_2: 'ТУР 2', ROUND_3: 'ТУР 3' })[source] || source;
+}
+
+function renderPlatoonsBoard() {
+  const board = $('platoonsBoard');
+  if (!board) return;
+  const groups = ROUND_SOURCES.map(source => {
+    const platoons = state.platoonsByRound?.[source] || [];
+    const isActive = state.mode === 'PLATOON' && state.source === source;
+    const forming = isActive && state.selected.length ? state.selected : [];
+    const rows = platoons.map((players, index) => `
+      <div class="platoon-row">
+        <div class="platoon-number">Взвод ${index + 1}</div>
+        <div class="platoon-members">${players.map(escapeHtml).join(' • ')}</div>
+      </div>`).join('');
+    const formingRow = forming.length ? `
+      <div class="platoon-row forming">
+        <div class="platoon-number">Взвод ${platoons.length + 1}</div>
+        <div class="platoon-members">Формується: ${forming.map(escapeHtml).join(' • ')}${forming.length < 3 ? ' • …' : ''}</div>
+      </div>` : '';
+    const empty = !rows && !formingRow ? '<div class="empty-round">Ще немає сформованих взводів</div>' : '';
+    return `
+      <div class="round-block${isActive ? ' active' : ''}">
+        <div class="round-head">
+          <div class="round-name">${roundTitle(source)}</div>
+          <div class="round-count">${platoons.length} взводів</div>
+        </div>
+        <div class="platoon-list">${rows}${formingRow}${empty}</div>
+      </div>`;
+  });
+  board.innerHTML = groups.join('');
+}
+
 function render() {
-  $('activeList').textContent = state.source;
+  $('activeList').textContent = state.source === 'FINAL' ? 'ФІНАЛ' : roundTitle(state.source);
   $('sourceRound1').classList.toggle('active', state.source === 'ROUND_1');
   $('sourceRound2').classList.toggle('active', state.source === 'ROUND_2');
   $('sourceRound3').classList.toggle('active', state.source === 'ROUND_3');
@@ -224,7 +292,7 @@ function render() {
   $('pickedCount').textContent = state.selected.length;
   $('platoonMode').classList.toggle('active', state.mode === 'PLATOON');
   $('finalMode').classList.toggle('active', state.mode === 'FINAL');
-  $('pickedTitle').textContent = state.mode === 'FINAL' ? 'Останній вибутий гравець' : 'Поточний взвод';
+  $('pickedTitle').textContent = state.mode === 'FINAL' ? 'Останній вибутий гравець' : `Поточний взвод • ${roundTitle(state.source)}`;
   $('pickedSlots').innerHTML = '';
   $('winnerBox').style.display = 'none';
   if (state.mode === 'PLATOON') {
@@ -244,6 +312,7 @@ function render() {
       $('winnerBox').style.display = 'block';
     }
   }
+  renderPlatoonsBoard();
   const publicLog = state.log.filter(x => !String(x).startsWith('📝 Записано') && !String(x).includes('аркуш 44'));
   $('log').innerHTML = publicLog.length
     ? publicLog.slice().reverse().map(x => `<div class="log-row">${escapeHtml(x)}</div>`).join('')
@@ -339,7 +408,15 @@ async function loadFromSheet(force = false) {
       }
     }
     const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-    state = { ...freshState(), source, mode, all, remaining: [...all] };
+    state = {
+      ...freshState(),
+      source,
+      mode,
+      all,
+      remaining: [...all],
+      log: [...(state.log || [])],
+      platoonsByRound: normalizePlatoonsByRound(state.platoonsByRound, state),
+    };
     rotation = 0;
     await broadcastState();
     setStatus(`Завантажено ${all.length} гравців із Google Sheets • ${new Date().toLocaleTimeString('uk-UA')}`, 'ok');
@@ -358,7 +435,15 @@ async function switchSource(source) {
   if (!IS_CONTROL || spinning || columns[source] === undefined) return;
   const all = [...(sheetLists[source] || [])];
   const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-  state = { ...freshState(), source, mode, all, remaining: [...all] };
+  state = {
+    ...freshState(),
+    source,
+    mode,
+    all,
+    remaining: [...all],
+    log: [...(state.log || [])],
+    platoonsByRound: normalizePlatoonsByRound(state.platoonsByRound, state),
+  };
   rotation = 0;
   await broadcastState();
   setStatus(all.length ? `${source}: завантажено ${all.length} гравців` : `${source}: список поки порожній`, all.length ? 'ok' : '');
@@ -560,6 +645,9 @@ async function finalizeSpin(event) {
 async function nextPlatoon() {
   if (!IS_CONTROL || state.mode !== 'PLATOON' || spinning || state.selected.length !== 3) return;
   const players = [...state.selected];
+  if (!state.platoonsByRound || typeof state.platoonsByRound !== 'object') state.platoonsByRound = emptyPlatoonsByRound();
+  if (!Array.isArray(state.platoonsByRound[state.source])) state.platoonsByRound[state.source] = [];
+  state.platoonsByRound[state.source].push(players);
   state.log.push(`👥 Взвод сформовано: ${players.join(' • ')}`);
   enqueueWrite('save_platoon', { round: state.source, p1: players[0], p2: players[1], p3: players[2] }, `${state.source} • ${players.join(' • ')}`);
   state.selected = [];
@@ -597,11 +685,23 @@ async function setMode(mode) {
 
 async function resetState() {
   if (!IS_CONTROL || spinning) return;
-  state = { ...freshState(), source: state.source, mode: state.mode, all: [...state.all], remaining: [...state.all] };
+  const source = state.source;
+  const label = source === 'FINAL' ? 'фіналу' : roundTitle(source);
+  if (!confirm(`Скинути колесо для ${label}? Поточний вибір буде очищено.${ROUND_SOURCES.includes(source) ? ' Сформовані взводи цього туру також буде видалено.' : ''}`)) return;
+  const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+  if (ROUND_SOURCES.includes(source)) platoonsByRound[source] = [];
+  state = {
+    ...freshState(),
+    source,
+    mode: state.mode,
+    all: [...state.all],
+    remaining: [...state.all],
+    platoonsByRound,
+  };
   rotation = 0;
   await set(spinRef, null);
   await broadcastState();
-  setStatus('Мережевий стан очищено. Усі гравці знову доступні.', 'ok');
+  setStatus(`Стан ${label} очищено. Усі гравці знову доступні.`, 'ok');
 }
 
 function bindButtons() {

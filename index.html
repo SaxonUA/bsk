@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WoT Platoon Cup Wheel v9</title>
+  <title>WoT Platoon Cup Wheel v10</title>
   <style>
     :root {
       --bg:#071018; --panel:#101d29; --panel2:#152737; --orange:#ff8a00; --cyan:#40e0d0;
@@ -24,7 +24,8 @@
     .winner{display:none;padding:14px;border-radius:14px;text-align:center;background:rgba(112,224,0,.10);border:1px solid rgba(112,224,0,.5)}.winner small{color:var(--muted);font-weight:900;letter-spacing:1px}.winner strong{display:block;margin-top:6px;color:var(--green);font-size:28px;word-break:break-word}
     .log{max-height:215px;overflow:auto;display:flex;flex-direction:column;gap:6px}.log-row{padding:8px 9px;background:rgba(255,255,255,.045);border-radius:10px;font-size:13px;font-weight:800}.muted{color:var(--muted)}.error{color:#ff9b9b}.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode{padding:10px 8px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#dce6ef;font-weight:900;cursor:pointer}.mode.active{border-color:rgba(255,138,0,.7);background:rgba(255,138,0,.12);color:var(--orange)}.source-switch{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.source-btn{padding:9px 7px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#dce6ef;font-size:12px;font-weight:900;cursor:pointer}.source-btn.active{border-color:rgba(64,224,208,.65);background:rgba(64,224,208,.11);color:var(--cyan)}.technical-status{display:none}.technical-status.show{display:block}
 
-    .ok{color:#85f28a}.sync-grid{display:grid;gap:7px}.uid{font:700 12px Consolas,monospace;word-break:break-all;background:rgba(255,255,255,.05);padding:8px;border-radius:9px;margin:7px 0}.mini-btn{appearance:none;border:1px solid rgba(64,224,208,.45);background:rgba(64,224,208,.10);color:#dff;font-weight:900;border-radius:9px;padding:8px 10px;cursor:pointer}.control-hint{font-size:12px;line-height:1.45;margin-top:8px}.obs .controls,.obs .control-only{display:none!important}.obs .app{grid-template-columns:minmax(580px,1fr) 390px}.obs body{padding:14px}.room-label{font-size:12px;color:var(--muted);font-weight:800}.room-label b{color:var(--cyan)}
+    .ok{color:#85f28a}.sync-grid{display:grid;gap:7px}.uid{font:700 12px Consolas,monospace;word-break:break-all;background:rgba(255,255,255,.05);padding:8px;border-radius:9px;margin:7px 0}.mini-btn{appearance:none;border:1px solid rgba(64,224,208,.45);background:rgba(64,224,208,.10);color:#dff;font-weight:900;border-radius:9px;padding:8px 10px;cursor:pointer}.control-hint{font-size:12px;line-height:1.45;margin-top:8px}.obs .controls,.obs .control-only{display:none!important}.obs .app{grid-template-columns:minmax(580px,1fr) 420px}.obs body{padding:14px}.room-label{font-size:12px;color:var(--muted);font-weight:800}.room-label b{color:var(--cyan)}
+    .platoons-board{display:flex;flex-direction:column;gap:9px;max-height:360px;overflow:auto;padding-right:3px}.round-block{padding:9px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)}.round-block.active{border-color:rgba(255,138,0,.55);background:rgba(255,138,0,.07)}.round-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}.round-name{font-size:13px;font-weight:1000;color:#fff}.round-count{font-size:11px;font-weight:900;color:var(--cyan);background:rgba(64,224,208,.10);padding:4px 7px;border-radius:999px}.platoon-list{display:flex;flex-direction:column;gap:5px}.platoon-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.045);font-size:12px}.platoon-row.forming{border:1px dashed rgba(255,138,0,.65);background:rgba(255,138,0,.08)}.platoon-number{font-weight:1000;color:var(--orange);white-space:nowrap}.platoon-members{font-weight:800;color:#eef6ff;line-height:1.35;word-break:break-word}.empty-round{font-size:12px;color:var(--muted);padding:2px 0}.obs .platoons-board{max-height:430px}.obs .platoon-row{font-size:13px}.obs .section h3{margin-bottom:8px}
     @media(max-width:1050px){.app{grid-template-columns:1fr}.wheel-wrap{min-height:560px}.pointer{right:calc(50% - 290px)}canvas{width:560px;height:560px}}
   </style>
 </head>
@@ -70,6 +71,10 @@
       <div class="winner" id="winnerBox"><small>ПЕРЕМОЖЕЦЬ</small><strong id="winnerName"></strong></div>
     </div>
     <div class="card section">
+      <h3>Сформовані взводи за турами</h3>
+      <div class="platoons-board" id="platoonsBoard"><div class="muted">Ще немає сформованих взводів</div></div>
+    </div>
+    <div class="card section control-only">
       <h3>Історія вибору</h3>
       <div class="log" id="log"><div class="muted">Ще немає вибраних гравців</div></div>
     </div>
@@ -90,6 +95,6 @@
     <div class="card section technical-status" id="writeStatusCard"><div class="muted" id="writeStatus"></div></div>
   </div>
 </div>
-<script type="module" src="./sync-wheel.js"></script>
+<script type="module" src="./sync-wheel.js?v=10"></script>
 </body>
 </html>
