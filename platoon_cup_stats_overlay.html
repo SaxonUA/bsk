@@ -3,24 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WoT Platoon Cup Stats Overlay v3</title>
+  <title>WoT Platoon Cup Stats Overlay v4</title>
   <style>
     :root {
+      --bg-1: rgba(7, 12, 18, .96);
+      --bg-2: rgba(16, 25, 34, .95);
+      --panel: rgba(255, 255, 255, .055);
+      --panel-border: rgba(255, 255, 255, .10);
+      --text: #f6f8fb;
+      --muted: #9eacbb;
       --orange: #ff8a00;
-      --orange-soft: rgba(255, 138, 0, .18);
-      --cyan: #42e8df;
-      --green: #79ef00;
-      --red: #ff5266;
-      --blue: #76a7ff;
-      --gold: #ffd04f;
-      --text: #f8fbff;
-      --muted: #aebdcd;
-      --panel: rgba(11, 19, 28, .94);
-      --panel-2: rgba(21, 32, 43, .92);
-      --border: rgba(255, 138, 0, .58);
+      --cyan: #40e5dd;
+      --green: #7df000;
+      --red: #ff5368;
+      --blue: #77a7ff;
+      --gold: #ffd24d;
     }
 
     * { box-sizing: border-box; }
+
     html, body {
       width: 100%;
       height: 100%;
@@ -28,166 +29,260 @@
       overflow: hidden;
       background: transparent;
     }
+
     body {
       font-family: Inter, Arial, Helvetica, sans-serif;
       color: var(--text);
     }
 
     .widget {
-      width: 1180px;
-      min-height: 270px;
+      width: 760px;
+      height: 360px;
       position: relative;
       overflow: hidden;
-      padding: 18px;
-      border: 2px solid var(--border);
-      border-radius: 26px;
+      padding: 17px;
+      border: 1px solid rgba(255, 138, 0, .72);
+      border-radius: 24px;
       background:
-        radial-gradient(circle at 12% 0%, rgba(37, 89, 120, .24), transparent 42%),
-        linear-gradient(145deg, rgba(16, 27, 38, .97), rgba(6, 11, 17, .94));
+        radial-gradient(circle at 9% 12%, rgba(0, 195, 255, .13), transparent 31%),
+        radial-gradient(circle at 91% 4%, rgba(255, 138, 0, .12), transparent 36%),
+        linear-gradient(145deg, var(--bg-2), var(--bg-1));
       box-shadow:
-        0 0 34px rgba(255, 138, 0, .24),
-        inset 0 1px 0 rgba(255,255,255,.05);
+        0 0 28px rgba(255, 138, 0, .20),
+        inset 0 1px 0 rgba(255,255,255,.04);
     }
 
     .widget::before {
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(118deg, transparent 0 37%, rgba(255,138,0,.055) 37.2% 38%, transparent 38.2% 100%),
-        linear-gradient(118deg, transparent 0 72%, rgba(255,255,255,.025) 72.1% 72.5%, transparent 72.7% 100%);
       pointer-events: none;
+      background:
+        linear-gradient(128deg, transparent 0 67%, rgba(255, 138, 0, .055) 67.2% 68.0%, transparent 68.2%),
+        repeating-linear-gradient(90deg, transparent 0 38px, rgba(255,255,255,.012) 39px 40px);
     }
 
-    .top {
+    .corner {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      pointer-events: none;
+    }
+    .corner.tl { top: 0; left: 0; border-top: 3px solid var(--orange); border-left: 3px solid var(--orange); border-radius: 23px 0 0 0; }
+    .corner.br { right: 0; bottom: 0; border-right: 3px solid var(--orange); border-bottom: 3px solid var(--orange); border-radius: 0 0 23px 0; }
+
+    .header {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 18px;
-      align-items: start;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 14px;
+      align-items: stretch;
       position: relative;
       z-index: 1;
     }
 
+    .identity {
+      min-width: 0;
+      padding: 3px 2px 0;
+    }
+
     .eyebrow {
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 2.4px;
-      text-transform: uppercase;
       color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     .title {
-      margin-top: 5px;
-      font-size: 34px;
+      margin-top: 8px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #ffffff;
+      font-size: 31px;
       line-height: 1;
       font-weight: 1000;
-      letter-spacing: .4px;
+      letter-spacing: .2px;
       text-transform: uppercase;
-      text-shadow: 0 0 16px rgba(255,138,0,.30);
+      text-shadow: 0 0 18px rgba(255, 138, 0, .22);
     }
 
-    .meta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .chip {
+    .map-chip {
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      min-height: 30px;
-      padding: 5px 11px;
-      border: 1px solid rgba(255,255,255,.10);
+      margin-top: 13px;
+      max-width: 100%;
+      min-height: 28px;
+      padding: 5px 10px;
+      border: 1px solid rgba(64,229,221,.30);
       border-radius: 999px;
-      background: rgba(255,255,255,.055);
-      color: #dbe7f3;
-      font-size: 13px;
+      background: rgba(64,229,221,.07);
+      color: #d9f9f8;
+      font-size: 12px;
       font-weight: 900;
-      letter-spacing: .2px;
+      letter-spacing: .3px;
+    }
+    .map-chip .muted { color: #9bb2be; }
+    .map-chip #mapTitle {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .chip .chip-label { color: var(--muted); }
-    .chip.map { border-color: rgba(66,232,223,.25); background: rgba(66,232,223,.07); }
-
-    .round {
-      min-width: 190px;
-      padding: 12px 16px;
-      border-radius: 19px;
-      border: 1px solid rgba(255,138,0,.55);
-      background: linear-gradient(145deg, rgba(255,138,0,.15), rgba(255,138,0,.07));
+    .round-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 94px;
+      padding: 12px 10px;
+      border: 1px solid rgba(255,138,0,.62);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255,138,0,.15), rgba(255,138,0,.055));
       text-align: center;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
 
     .round-label {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
-      letter-spacing: 1.8px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
     }
 
     .round-value {
-      margin-top: 5px;
+      margin-top: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: var(--orange);
-      font-size: 38px;
+      font-size: 31px;
       line-height: 1;
       font-weight: 1000;
       text-transform: uppercase;
-      text-shadow: 0 0 13px rgba(255,138,0,.28);
+      text-shadow: 0 0 13px rgba(255,138,0,.26);
     }
 
-    .stats {
+    .content {
       display: grid;
-      grid-template-columns: 1.08fr 1fr 1fr 1.12fr 1.22fr;
-      gap: 11px;
-      margin-top: 19px;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 13px;
+      height: 209px;
+      margin-top: 15px;
       position: relative;
       z-index: 1;
     }
 
-    .stat {
+    .gold-card {
       position: relative;
-      min-height: 103px;
       overflow: hidden;
-      padding: 13px 12px 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 17px;
-      background: linear-gradient(145deg, rgba(255,255,255,.065), rgba(255,255,255,.035));
-      text-align: center;
+      padding: 17px;
+      border: 1px solid rgba(255,210,77,.28);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 84% 18%, rgba(255,210,77,.17), transparent 34%),
+        linear-gradient(145deg, rgba(255,210,77,.085), rgba(255,255,255,.035));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
     }
 
-    .stat::after {
+    .gold-card::after {
       content: "";
       position: absolute;
-      left: 13px;
-      right: 13px;
-      bottom: 0;
-      height: 3px;
-      border-radius: 999px 999px 0 0;
-      opacity: .78;
-      background: currentColor;
+      width: 110px;
+      height: 110px;
+      right: -42px;
+      bottom: -42px;
+      border: 1px solid rgba(255,210,77,.20);
+      border-radius: 50%;
+      box-shadow: 0 0 0 14px rgba(255,210,77,.035), 0 0 0 28px rgba(255,210,77,.018);
     }
 
-    .label {
-      min-height: 29px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.12;
+    .gold-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,210,77,.33);
+      border-radius: 50%;
+      background: rgba(255,210,77,.10);
+      color: var(--gold);
+      font-size: 21px;
+      box-shadow: 0 0 18px rgba(255,210,77,.10);
+    }
+
+    .gold-label {
+      margin-top: 16px;
+      color: #d1bf77;
+      font-size: 11px;
+      line-height: 1.15;
       font-weight: 1000;
-      letter-spacing: .9px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
     }
 
-    .value {
-      margin-top: 7px;
-      font-size: 38px;
+    .gold-value {
+      margin-top: 9px;
+      color: var(--gold);
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 1000;
+      white-space: nowrap;
+      text-shadow: 0 0 17px rgba(255,210,77,.18);
+    }
+
+    .gold-note {
+      margin-top: 12px;
+      color: rgba(231, 220, 173, .67);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .3px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      position: relative;
+      overflow: hidden;
+      padding: 13px 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(255,255,255,.067), rgba(255,255,255,.030));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+
+    .stat::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: currentColor;
+      opacity: .82;
+    }
+
+    .stat-label {
+      margin-left: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      margin-top: 10px;
+      margin-left: 5px;
+      color: currentColor;
+      font-size: 37px;
       line-height: 1;
       font-weight: 1000;
       white-space: nowrap;
@@ -197,46 +292,67 @@
     .wins { color: var(--green); }
     .losses { color: var(--red); }
     .winrate { color: var(--blue); }
-    .gold { color: var(--gold); }
-    .gold .value { font-size: 35px; text-shadow: 0 0 13px rgba(255,208,79,.24); }
 
     .error {
       display: none;
-      margin-top: 10px;
-      position: relative;
-      z-index: 1;
-      color: #ff9eaa;
-      font-size: 12px;
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 10px;
+      z-index: 3;
+      padding: 6px 9px;
+      border-radius: 9px;
+      background: rgba(70, 10, 18, .82);
+      color: #ffadb7;
+      font-size: 11px;
       font-weight: 900;
-    }
-
-    @media (max-width: 1180px) {
-      .widget { transform-origin: top left; }
     }
   </style>
 </head>
 <body>
   <div class="widget">
-    <div class="top">
-      <div>
+    <div class="corner tl"></div>
+    <div class="corner br"></div>
+
+    <div class="header">
+      <div class="identity">
         <div class="eyebrow" id="blockTitle">WORLD OF TANKS • БИТВА ВЗВОДІВ</div>
         <div class="title" id="streamTitle">ГЛЯДАЧІ ПРОТИ СТРІМЕРІВ</div>
-        <div class="meta-row">
-          <div class="chip map"><span>🗺️</span><span class="chip-label">Карта:</span><span id="mapTitle">ХІММЕЛЬСДОРФ</span></div>
-        </div>
+        <div class="map-chip"><span>🗺️</span><span class="muted">Карта:</span><span id="mapTitle">ХІММЕЛЬСДОРФ</span></div>
       </div>
-      <div class="round">
+
+      <div class="round-card">
         <div class="round-label">Поточний тур</div>
         <div class="round-value" id="roundTitle">ТУР 1</div>
       </div>
     </div>
 
-    <div class="stats">
-      <div class="stat battle"><div class="label">Зіграно боїв</div><div class="value" id="battles">0</div></div>
-      <div class="stat wins"><div class="label">Наші перемоги</div><div class="value" id="wins">0</div></div>
-      <div class="stat losses"><div class="label">Наші поразки</div><div class="value" id="losses">0</div></div>
-      <div class="stat winrate"><div class="label">Відсоток перемог</div><div class="value" id="winRate">0%</div></div>
-      <div class="stat gold"><div class="label">Золота переможцям</div><div class="value" id="gold">0</div></div>
+    <div class="content">
+      <div class="gold-card">
+        <div class="gold-icon">🪙</div>
+        <div class="gold-label">Золота переможцям</div>
+        <div class="gold-value" id="gold">0</div>
+        <div class="gold-note">1 поразка = 1 500 золота</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat battle">
+          <div class="stat-label">Зіграно боїв</div>
+          <div class="stat-value" id="battles">0</div>
+        </div>
+        <div class="stat wins">
+          <div class="stat-label">Наші перемоги</div>
+          <div class="stat-value" id="wins">0</div>
+        </div>
+        <div class="stat losses">
+          <div class="stat-label">Наші поразки</div>
+          <div class="stat-value" id="losses">0</div>
+        </div>
+        <div class="stat winrate">
+          <div class="stat-label">Відсоток перемог</div>
+          <div class="stat-value" id="winRate">0%</div>
+        </div>
+      </div>
     </div>
 
     <div class="error" id="error"></div>
