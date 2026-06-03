@@ -20,6 +20,7 @@ let auth;
 let roomRef;
 let stateRef;
 let spinRef;
+let platoonsRef;
 let rotation = 0;
 let spinning = false;
 let flushing = false;
@@ -32,6 +33,7 @@ let state = freshState();
 let sheetLists = { ROUND_1: [], ROUND_2: [], ROUND_3: [], FINAL: [] };
 let sheetDefaultSource = 'ROUND_1';
 let pendingWrites = loadPendingWrites();
+let persistentPlatoons = emptyPlatoonsByRound();
 
 document.body.classList.toggle('obs', !IS_CONTROL);
 document.body.classList.toggle('control', IS_CONTROL);
@@ -129,6 +131,45 @@ function normalizePlatoonsByRound(value, safeState = {}) {
   return result;
 }
 
+function platoonSignature(players) {
+  return normalizePlatoon(players).map(name => name.toLowerCase()).join('\u0001');
+}
+
+function mergePlatoonsByRound(...maps) {
+  const result = emptyPlatoonsByRound();
+  for (const source of ROUND_SOURCES) {
+    const seen = new Set();
+    for (const map of maps) {
+      const raw = map && typeof map === 'object' ? map[source] : [];
+      const list = Array.isArray(raw) ? raw : [];
+      for (const playersRaw of list) {
+        const players = normalizePlatoon(playersRaw);
+        if (!players.length) continue;
+        const key = platoonSignature(players);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result[source].push(players);
+      }
+    }
+  }
+  return result;
+}
+
+function hasAnyPlatoons(map) {
+  return ROUND_SOURCES.some(source => Array.isArray(map?.[source]) && map[source].length);
+}
+
+function applyPersistentPlatoons(target = state) {
+  target.platoonsByRound = mergePlatoonsByRound(persistentPlatoons, target.platoonsByRound);
+  return target;
+}
+
+async function persistPlatoonsBoard() {
+  persistentPlatoons = mergePlatoonsByRound(state.platoonsByRound);
+  state.platoonsByRound = mergePlatoonsByRound(persistentPlatoons);
+  if (platoonsRef) await set(platoonsRef, persistentPlatoons);
+}
+
 function normalizeNames(value) {
   return Array.isArray(value) ? value.map(String).map(x => x.trim()).filter(Boolean) : [];
 }
@@ -199,6 +240,7 @@ function ensureStateShape(value) {
 }
 
 function publicState() {
+  applyPersistentPlatoons(state);
   saveActiveSnapshot(state);
   return {
     ...ensureStateShape(state),
@@ -471,7 +513,7 @@ async function loadFromSheet(force = false) {
     const source = force && columns[state.source] !== undefined ? state.source : sheetDefaultSource;
     const all = [...(sheetLists[source] || [])];
     const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-    const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+    const platoonsByRound = mergePlatoonsByRound(persistentPlatoons, normalizePlatoonsByRound(state.platoonsByRound, state));
     const sourceStates = normalizeSourceStates(state.sourceStates, state);
     sourceStates[source] = normalizeSourceState({ all, remaining: all, selected: [], rotation: 0, finalWinnerQueued: '' });
     state = {
@@ -504,10 +546,14 @@ async function switchSource(source) {
   if (!IS_CONTROL || spinning || columns[source] === undefined) return;
   setStatus(`${roundTitle(source)}: оновлення списку з Google Sheets…`);
   await fetchSheetLists();
+  // Перед зміною туру зберігаємо дошку взводів окремо від колеса.
+  // Завдяки цьому оновлення списку гравців одного туру ніколи не стирає результати інших турів.
+  applyPersistentPlatoons(state);
+  await persistPlatoonsBoard();
   saveActiveSnapshot(state);
   const all = [...(sheetLists[source] || [])];
   const mode = source === 'FINAL' ? 'FINAL' : 'PLATOON';
-  const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+  const platoonsByRound = mergePlatoonsByRound(persistentPlatoons, normalizePlatoonsByRound(state.platoonsByRound, state));
   const sourceStates = normalizeSourceStates(state.sourceStates, state);
   const cached = normalizeSourceState(sourceStates[source]);
   const restoreCachedProgress = sameNames(cached.all, all);
@@ -719,6 +765,7 @@ async function nextPlatoon() {
   state.log.push(`👥 Взвод сформовано: ${players.join(' • ')}`);
   enqueueWrite('save_platoon', { round: state.source, p1: players[0], p2: players[1], p3: players[2] }, `${state.source} • ${players.join(' • ')}`);
   state.selected = [];
+  await persistPlatoonsBoard();
   await broadcastState();
 }
 
@@ -756,7 +803,7 @@ async function resetState() {
   const source = state.source;
   const label = source === 'FINAL' ? 'фіналу' : roundTitle(source);
   if (!confirm(`Скинути колесо для ${label}? Поточний вибір буде очищено.${ROUND_SOURCES.includes(source) ? ' Сформовані взводи цього туру також буде видалено.' : ''}`)) return;
-  const platoonsByRound = normalizePlatoonsByRound(state.platoonsByRound, state);
+  const platoonsByRound = mergePlatoonsByRound(persistentPlatoons, normalizePlatoonsByRound(state.platoonsByRound, state));
   if (ROUND_SOURCES.includes(source)) platoonsByRound[source] = [];
   const sourceStates = normalizeSourceStates(state.sourceStates, state);
   sourceStates[source] = normalizeSourceState({ all: state.all, remaining: state.all, selected: [], rotation: 0, finalWinnerQueued: '' });
@@ -771,6 +818,8 @@ async function resetState() {
     sourceStates,
   };
   rotation = 0;
+  persistentPlatoons = mergePlatoonsByRound(platoonsByRound);
+  if (platoonsRef) await set(platoonsRef, persistentPlatoons);
   await set(spinRef, null);
   await broadcastState();
   setStatus(`Стан ${label} очищено. Усі гравці знову доступні.`, 'ok');
@@ -804,6 +853,7 @@ async function initFirebase() {
     roomRef = ref(db, `rooms/${ROOM_ID}`);
     stateRef = ref(db, `rooms/${ROOM_ID}/state`);
     spinRef = ref(db, `rooms/${ROOM_ID}/spin`);
+    platoonsRef = ref(db, `rooms/${ROOM_ID}/platoonsByRound`);
     firebaseReady = true;
 
     onValue(ref(db, '.info/connected'), snap => {
@@ -814,12 +864,25 @@ async function initFirebase() {
     onValue(ref(db, '.info/serverTimeOffset'), snap => {
       serverTimeOffset = Number(snap.val()) || 0;
     });
+    onValue(platoonsRef, snap => {
+      persistentPlatoons = snap.exists() ? mergePlatoonsByRound(snap.val()) : emptyPlatoonsByRound();
+      applyPersistentPlatoons(state);
+      render();
+    }, error => setStatus(`Немає доступу до дошки взводів Firebase: ${error.message}`, 'error'));
     onValue(stateRef, snap => {
       if (!snap.exists()) {
         if (!IS_CONTROL) setStatus('Очікування запуску колеса головним стрімером…');
         return;
       }
-      state = ensureStateShape(snap.val());
+      const incoming = ensureStateShape(snap.val());
+      const incomingPlatoons = normalizePlatoonsByRound(incoming.platoonsByRound, incoming);
+      // Міграція зі старих версій: якщо окремої дошки ще немає, переносимо наявні взводи один раз.
+      if (!hasAnyPlatoons(persistentPlatoons) && hasAnyPlatoons(incomingPlatoons)) {
+        persistentPlatoons = mergePlatoonsByRound(incomingPlatoons);
+        if (IS_CONTROL && platoonsRef) set(platoonsRef, persistentPlatoons).catch(() => {});
+      }
+      incoming.platoonsByRound = mergePlatoonsByRound(persistentPlatoons, incomingPlatoons);
+      state = incoming;
       if (!spinning) rotation = state.rotation;
       render();
       if (!IS_CONTROL) setStatus(`Синхронізація активна • ${new Date().toLocaleTimeString('uk-UA')}`, 'ok');
